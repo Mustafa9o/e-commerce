@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - Admin Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --font-family-en: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-family-ar: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-ar);
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            transition: var(--transition);
+        }
+
+        body[dir="ltr"] {
+            font-family: var(--font-family-en);
+        }
+
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f5f7fa;
+        }
+
+        .login-container {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-logo h1 {
+            font-size: 32px;
+            color: var(--primary-color);
+        }
+
+        .login-logo span {
+            color: var(--secondary-color);
+        }
+
+        .login-form {
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .login-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .login-error {
+            color: var(--danger-color);
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .login-success {
+            color: var(--success-color);
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .user-type {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .user-type button {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #777;
+            border-bottom: 2px solid transparent;
+        }
+
+        .user-type button.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .back-to-store {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-to-store a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-to-store a:hover {
+            text-decoration: underline;
+        }
+
+        /* RTL/LTR specific styles */
+        body[dir="rtl"] {
+            text-align: right;
+        }
+
+        body[dir="ltr"] {
+            text-align: left;
+        }
+    </style>
+</head>
+<body dir="rtl">
+    <div class="login-screen">
+        <div class="login-container">
+            <div class="login-logo">
+                <h1><span>متجر</span>إلكتروني</h1>
+                <p>لوحة تحكم المدير</p>
+            </div>
+            
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="email">البريد الإلكتروني</label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">كلمة المرور</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+                <button type="submit" class="login-btn">تسجيل الدخول</button>
+                <div id="login-error" class="login-error"></div>
+                <div id="login-success" class="login-success"></div>
+            </form>
+            
+            <div class="back-to-store">
+                <a href="index.html">العودة إلى المتجر</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase
+        const supabaseUrl = 'https://your-supabase-url.supabase.co';
+        const supabaseKey = 'your-supabase-key';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            checkAuthState();
+        });
+
+        // Check authentication state
+        async function checkAuthState() {
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                // Check if user is admin
+                try {
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    if (error) throw error;
+                    
+                    if (data.role === 'admin') {
+                        // Redirect to admin dashboard
+                        window.location.href = 'admin.html';
+                    }
+                } catch (error) {
+                    console.error('Error checking admin role:', error.message);
+                }
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+        }
+
+        // Handle login
+        async function handleLogin(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorElement = document.getElementById('login-error');
+            const successElement = document.getElementById('login-success');
+            
+            // Reset messages
+            errorElement.textContent = '';
+            successElement.textContent = '';
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                
+                if (error) throw error;
+                
+                // Check if user is admin
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', data.user.id)
+                    .single();
+                
+                if (profileError) throw profileError;
+                
+                if (profile.role === 'admin') {
+                    successElement.textContent = 'تم تسجيل الدخول بنجاح';
+                    
+                    // Redirect to admin dashboard
+                    setTimeout(() => {
+                        window.location.href = 'admin.html';
+                    }, 1500);
+                } else {
+                    // User is not admin
+                    errorElement.textContent = 'ليس لديك صلاحية الوصول إلى لوحة التحكم';
+                    
+                    // Sign out the user
+                    await supabase.auth.signOut();
+                }
+            } catch (error) {
+                errorElement.textContent = error.message;
+            }
+        }
+    </script>
+</body>
+</html>
