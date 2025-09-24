@@ -7,242 +7,270 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     <style>
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #2c3e50;
-            --accent-color: #e74c3c;
-            --light-color: #ecf0f1;
-            --dark-color: #2c3e50;
-            --success-color: #2ecc71;
-            --warning-color: #f39c12;
-            --danger-color: #e74c3c;
-            --font-family-en: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --font-family-ar: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: var(--font-family-ar);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f5f7fa;
             color: #333;
-            line-height: 1.6;
-            transition: var(--transition);
-        }
-
-        body[dir="ltr"] {
-            font-family: var(--font-family-en);
-        }
-
-        .login-screen {
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             min-height: 100vh;
-            background-color: #f5f7fa;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
-
+        
         .login-container {
             background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 500px;
             padding: 40px;
         }
-
+        
         .login-logo {
             text-align: center;
             margin-bottom: 30px;
         }
-
+        
         .login-logo h1 {
             font-size: 32px;
-            color: var(--primary-color);
+            color: #3498db;
         }
-
+        
         .login-logo span {
-            color: var(--secondary-color);
+            color: #2c3e50;
         }
-
+        
         .login-form {
             margin-bottom: 20px;
         }
-
+        
         .form-group {
             margin-bottom: 20px;
         }
-
+        
         .form-group label {
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
         }
-
+        
         .form-control {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
-            border-radius: var(--border-radius);
+            border-radius: 4px;
             font-size: 16px;
         }
-
+        
         .form-control:focus {
             outline: none;
-            border-color: var(--primary-color);
+            border-color: #3498db;
             box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
         }
-
+        
         .login-btn {
             width: 100%;
             padding: 12px;
-            background-color: var(--primary-color);
+            background-color: #3498db;
             color: white;
             border: none;
-            border-radius: var(--border-radius);
+            border-radius: 4px;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: var(--transition);
+            transition: background-color 0.3s;
         }
-
+        
         .login-btn:hover {
             background-color: #2980b9;
         }
-
+        
+        .login-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        
         .login-error {
-            color: var(--danger-color);
+            color: #e74c3c;
             margin-top: 10px;
             text-align: center;
+            font-size: 14px;
         }
-
+        
         .login-success {
-            color: var(--success-color);
+            color: #2ecc71;
             margin-top: 10px;
             text-align: center;
+            font-size: 14px;
         }
-
-        .user-type {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .user-type button {
-            background: none;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            font-weight: 600;
-            color: #777;
-            border-bottom: 2px solid transparent;
-        }
-
-        .user-type button.active {
-            color: var(--primary-color);
-            border-bottom-color: var(--primary-color);
-        }
-
+        
         .back-to-store {
             text-align: center;
             margin-top: 20px;
         }
-
+        
         .back-to-store a {
-            color: var(--primary-color);
+            color: #3498db;
             text-decoration: none;
             font-weight: 600;
         }
-
+        
         .back-to-store a:hover {
             text-decoration: underline;
         }
-
-        /* RTL/LTR specific styles */
-        body[dir="rtl"] {
-            text-align: right;
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
         }
-
-        body[dir="ltr"] {
-            text-align: left;
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .network-error {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .network-error.show {
+            display: block;
         }
     </style>
 </head>
-<body dir="rtl">
-    <div class="login-screen">
-        <div class="login-container">
-            <div class="login-logo">
-                <h1><span>متجر</span>إلكتروني</h1>
-                <p>لوحة تحكم المدير</p>
+<body>
+    <div class="login-container">
+        <div class="login-logo">
+            <h1><span>متجر</span>إلكتروني</h1>
+            <p>لوحة تحكم المدير</p>
+        </div>
+        
+        <div class="network-error" id="network-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            خطأ في الاتصال بالشبكة. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.
+        </div>
+        
+        <form id="login-form" class="login-form">
+            <div class="form-group">
+                <label for="email">البريد الإلكتروني</label>
+                <input type="email" id="email" class="form-control" required>
             </div>
-            
-            <form id="login-form" class="login-form">
-                <div class="form-group">
-                    <label for="email">البريد الإلكتروني</label>
-                    <input type="email" id="email" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">كلمة المرور</label>
-                    <input type="password" id="password" class="form-control" required>
-                </div>
-                <button type="submit" class="login-btn">تسجيل الدخول</button>
-                <div id="login-error" class="login-error"></div>
-                <div id="login-success" class="login-success"></div>
-            </form>
-            
-            <div class="back-to-store">
-                <a href="index.html">العودة إلى المتجر</a>
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" class="form-control" required>
             </div>
+            <button type="submit" class="login-btn" id="login-btn">تسجيل الدخول</button>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>جاري تسجيل الدخول...</p>
+            </div>
+            <div id="login-error" class="login-error"></div>
+            <div id="login-success" class="login-success"></div>
+        </form>
+        
+        <div class="back-to-store">
+            <a href="index.html">العودة إلى المتجر</a>
         </div>
     </div>
 
     <script>
         // Initialize Supabase
- const supabaseUrl = 'https://gmdjwwtlfjoiejsaqgdr.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZGp3d3RsZmpvaWVqc2FxZ2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MTA0MTgsImV4cCI6MjA3NDI4NjQxOH0.LcCQYXohWd8w8RDJ0NhzJLjHf3kg64g8iFuDgL1YTjE';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = 'https://gmdjwwtlfjoiejsaqgdr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZGp3d3RsZmpvaWVqc2FxZ2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MTA0MTgsImV4cCI6MjA3NDI4NjQxOH0.LcCQYXohWd8w8RDJ0NhzJLjHf3kg64g8iFuDgL1YTjE';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
             checkAuthState();
+            checkNetworkConnection();
         });
+
+        // Check network connection
+        async function checkNetworkConnection() {
+            try {
+                const { data, error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+                
+                if (error) {
+                    console.error('Network check failed:', error);
+                    document.getElementById('network-error').classList.add('show');
+                } else {
+                    console.log('Network connection successful');
+                    document.getElementById('network-error').classList.remove('show');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                document.getElementById('network-error').classList.add('show');
+            }
+        }
 
         // Check authentication state
         async function checkAuthState() {
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (user) {
-                // Check if user is admin
-                try {
-                    const { data, error } = await supabase
-                        .from('profiles')
-                        .select('role')
-                        .eq('id', user.id)
-                        .single();
-                    
-                    if (error) throw error;
-                    
-                    if (data.role === 'admin') {
-                        // Redirect to admin dashboard
-                        window.location.href = 'admin.html';
-                    }
-                } catch (error) {
-                    console.error('Error checking admin role:', error.message);
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                
+                if (error) {
+                    console.error('Error getting user:', error);
+                    return;
                 }
+                
+                if (user) {
+                    // Check if user is admin
+                    try {
+                        const { data: profile, error: profileError } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', user.id)
+                            .single();
+                        
+                        if (profileError) {
+                            console.error('Error checking admin role:', profileError);
+                            return;
+                        }
+                        
+                        if (profile && profile.role === 'admin') {
+                            // Redirect to admin dashboard
+                            window.location.href = 'admin.html';
+                        }
+                    } catch (error) {
+                        console.error('Error checking admin role:', error);
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking auth state:', error);
             }
         }
 
         // Setup event listeners
         function setupEventListeners() {
-            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            const loginForm = document.getElementById('login-form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', handleLogin);
+            }
         }
 
         // Handle login
@@ -253,44 +281,88 @@
             const password = document.getElementById('password').value;
             const errorElement = document.getElementById('login-error');
             const successElement = document.getElementById('login-success');
+            const loginBtn = document.getElementById('login-btn');
+            const loading = document.getElementById('loading');
             
             // Reset messages
             errorElement.textContent = '';
             successElement.textContent = '';
             
+            // Show loading state
+            loginBtn.disabled = true;
+            loading.classList.add('show');
+            
             try {
+                console.log('Attempting login for:', email);
+                
+                // Check network first
+                await checkNetworkConnection();
+                
+                // Attempt login
                 const { data, error } = await supabase.auth.signInWithPassword({
                     email,
                     password
                 });
                 
-                if (error) throw error;
+                if (error) {
+                    throw error;
+                }
+                
+                console.log('Login successful:', data);
+                
+                if (!data.user) {
+                    throw new Error('No user returned from login');
+                }
                 
                 // Check if user is admin
+                console.log('Checking admin role for user:', data.user.id);
+                
                 const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('role')
                     .eq('id', data.user.id)
                     .single();
                 
-                if (profileError) throw profileError;
-                
-                if (profile.role === 'admin') {
-                    successElement.textContent = 'تم تسجيل الدخول بنجاح';
-                    
-                    // Redirect to admin dashboard
-                    setTimeout(() => {
-                        window.location.href = 'admin.html';
-                    }, 1500);
-                } else {
-                    // User is not admin
-                    errorElement.textContent = 'ليس لديك صلاحية الوصول إلى لوحة التحكم';
-                    
-                    // Sign out the user
-                    await supabase.auth.signOut();
+                if (profileError) {
+                    console.error('Profile error:', profileError);
+                    throw new Error('حدث خطأ في التحقق من صلاحيات المستخدم');
                 }
+                
+                if (!profile) {
+                    throw new Error('الملف الشخصي للمستخدم غير موجود');
+                }
+                
+                if (profile.role !== 'admin') {
+                    throw new Error('ليس لديك صلاحية الوصول إلى لوحة التحكم');
+                }
+                
+                successElement.textContent = 'تم تسجيل الدخول بنجاح';
+                
+                // Redirect to admin dashboard
+                setTimeout(() => {
+                    window.location.href = 'admin.html';
+                }, 1500);
+                
             } catch (error) {
-                errorElement.textContent = error.message;
+                console.error('Login error:', error);
+                
+                // Handle specific error types
+                let errorMessage = error.message;
+                
+                if (error.message.includes('fetch')) {
+                    errorMessage = 'خطأ في الاتصال بالشبكة. يرجى التحقق من اتصالك بالإنترنت.';
+                    document.getElementById('network-error').classList.add('show');
+                } else if (error.message.includes('Invalid login credentials')) {
+                    errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+                } else if (error.message.includes('Email not confirmed')) {
+                    errorMessage = 'يرجى تأكيد بريدك الإلكتروني أولاً.';
+                }
+                
+                errorElement.textContent = errorMessage;
+            } finally {
+                // Hide loading state
+                loginBtn.disabled = false;
+                loading.classList.remove('show');
             }
         }
     </script>
