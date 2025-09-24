@@ -85,7 +85,7 @@
 
         .logo span {
             color: var(--secondary-color);
-            margin-right: 5px;
+            margin-inline-start: 5px;
         }
 
         .header-actions {
@@ -124,7 +124,7 @@
             width: 35px;
             height: 35px;
             border-radius: 50%;
-            margin-left: 10px;
+            margin-inline-start: 10px;
             object-fit: cover;
             border: 2px solid #e0e0e0;
         }
@@ -147,7 +147,7 @@
             box-shadow: var(--box-shadow);
             z-index: 1001;
             border-radius: var(--border-radius);
-            left: 0;
+            inset-inline-start: 0;
             top: 100%;
             margin-top: 5px;
         }
@@ -191,7 +191,7 @@
             position: fixed;
             top: var(--header-height);
             bottom: 0;
-            right: 0;
+            inset-inline-end: 0;
             overflow-y: auto;
             z-index: 999;
             transition: var(--transition);
@@ -218,18 +218,18 @@
 
         .sidebar-menu a:hover, .sidebar-menu a.active {
             background-color: rgba(255, 255, 255, 0.1);
-            border-left: 3px solid var(--primary-color);
+            border-inline-start: 3px solid var(--primary-color);
         }
 
         .sidebar-menu i {
-            margin-left: 10px;
+            margin-inline-start: 10px;
             width: 20px;
             text-align: center;
         }
 
         /* Main Content */
         .main-content {
-            margin-left: var(--sidebar-width);
+            margin-inline-end: var(--sidebar-width);
             padding: calc(var(--header-height) + 30px) 30px 30px;
             min-height: 100vh;
             transition: var(--transition);
@@ -299,7 +299,7 @@
 
         .admin-table th, .admin-table td {
             padding: 12px 15px;
-            text-align: right;
+            text-align: start;
             border-bottom: 1px solid #ddd;
         }
 
@@ -358,7 +358,7 @@
         }
 
         .btn i {
-            margin-left: 5px;
+            margin-inline-start: 5px;
         }
 
         .btn-primary {
@@ -412,7 +412,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-left: 15px;
+            margin-inline-start: 15px;
             font-size: 24px;
             color: white;
             flex-shrink: 0;
@@ -509,7 +509,7 @@
         .notification {
             position: fixed;
             top: 20px;
-            right: 20px;
+            inset-inline-end: 20px;
             padding: 15px 25px;
             border-radius: 8px;
             color: white;
@@ -540,7 +540,7 @@
         }
 
         .notification i {
-            margin-left: 10px;
+            margin-inline-start: 10px;
         }
 
         /* Modal */
@@ -621,7 +621,7 @@
             color: white;
             position: fixed;
             bottom: 20px;
-            left: 20px;
+            inset-inline-start: 20px;
             width: 56px;
             height: 56px;
             border-radius: 50%;
@@ -692,7 +692,7 @@
             }
             
             .main-content {
-                margin-left: 0;
+                margin-inline-end: 0;
                 width: 100%;
                 padding: calc(var(--header-height) + 20px) 20px 20px;
             }
@@ -769,7 +769,7 @@
             }
             
             .stat-icon {
-                margin-left: 0;
+                margin-inline-start: 0;
                 margin-bottom: 10px;
             }
             
@@ -779,8 +779,8 @@
             }
             
             .notification {
-                right: 10px;
-                left: 10px;
+                inset-inline-end: 10px;
+                inset-inline-start: 10px;
                 transform: translateY(-100px);
                 padding: 12px 20px;
                 font-size: 14px;
@@ -831,88 +831,58 @@
         }
 
         body[dir="rtl"] .sidebar {
-            right: 0;
-            left: auto;
+            inset-inline-end: 0;
+            inset-inline-start: auto;
         }
 
         body[dir="rtl"] .main-content {
-            margin-right: 0;
-            margin-left: var(--sidebar-width);
+            margin-inline-start: 0;
+            margin-inline-end: var(--sidebar-width);
         }
 
         body[dir="rtl"] .sidebar-menu a {
-            border-right: none;
-            border-left: 3px solid transparent;
+            border-inline-end: none;
+            border-inline-start: 3px solid transparent;
         }
 
         body[dir="rtl"] .sidebar-menu a:hover, 
         body[dir="rtl"] .sidebar-menu a.active {
-            border-left-color: var(--primary-color);
+            border-inline-start-color: var(--primary-color);
         }
 
         body[dir="rtl"] .dropdown-content {
-            left: auto;
-            right: 0;
-        }
-
-        body[dir="rtl"] .admin-table th, 
-        body[dir="rtl"] .admin-table td {
-            text-align: right;
-        }
-
-        body[dir="ltr"] .admin-table th, 
-        body[dir="ltr"] .admin-table td {
-            text-align: left;
-        }
-
-        body[dir="rtl"] .stat-icon {
-            margin-left: 0;
-            margin-right: 15px;
-        }
-
-        body[dir="rtl"] .btn i {
-            margin-left: 0;
-            margin-right: 5px;
+            inset-inline-end: 0;
+            inset-inline-start: auto;
         }
 
         body[dir="ltr"] .sidebar {
-            left: 0;
-            right: auto;
+            inset-inline-start: 0;
+            inset-inline-end: auto;
         }
 
         body[dir="ltr"] .main-content {
-            margin-left: 0;
-            margin-right: var(--sidebar-width);
+            margin-inline-end: 0;
+            margin-inline-start: var(--sidebar-width);
         }
 
         body[dir="ltr"] .sidebar-menu a {
-            border-left: none;
-            border-right: 3px solid transparent;
+            border-inline-start: none;
+            border-inline-end: 3px solid transparent;
         }
 
         body[dir="ltr"] .sidebar-menu a:hover, 
         body[dir="ltr"] .sidebar-menu a.active {
-            border-right-color: var(--primary-color);
+            border-inline-end-color: var(--primary-color);
         }
 
         body[dir="ltr"] .dropdown-content {
-            right: auto;
-            left: 0;
-        }
-
-        body[dir="ltr"] .stat-icon {
-            margin-right: 0;
-            margin-left: 15px;
-        }
-
-        body[dir="ltr"] .btn i {
-            margin-right: 0;
-            margin-left: 5px;
+            inset-inline-start: 0;
+            inset-inline-end: auto;
         }
 
         body[dir="ltr"] .menu-toggle {
-            left: auto;
-            right: 20px;
+            inset-inline-start: auto;
+            inset-inline-end: 20px;
         }
 
         /* Clearfix */
