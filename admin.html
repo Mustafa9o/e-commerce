@@ -22,6 +22,9 @@
             --border-radius: 8px;
             --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             --transition: all 0.3s ease;
+            --header-height: 70px;
+            --sidebar-width: 250px;
+            --sidebar-collapsed-width: 0;
         }
 
         * {
@@ -36,14 +39,16 @@
             color: #333;
             line-height: 1.6;
             transition: var(--transition);
+            min-height: 100vh;
         }
 
         body[dir="ltr"] {
             font-family: var(--font-family-en);
         }
 
+        /* Container */
         .container {
-            width: 90%;
+            width: 100%;
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 15px;
@@ -53,8 +58,11 @@
         header {
             background-color: white;
             box-shadow: var(--box-shadow);
-            position: sticky;
+            position: fixed;
             top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
             z-index: 1000;
         }
 
@@ -62,41 +70,48 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
+            height: 100%;
+            padding: 0 20px;
         }
 
         .logo {
             font-size: 24px;
             font-weight: bold;
             color: var(--primary-color);
+            display: flex;
+            align-items: center;
         }
 
         .logo span {
             color: var(--secondary-color);
+            margin-right: 5px;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
+            gap: 15px;
         }
 
         .lang-switcher {
-            margin-right: 15px;
+            display: flex;
+            background-color: #f5f5f5;
+            border-radius: 20px;
+            overflow: hidden;
         }
 
         .lang-switcher button {
             background: none;
-            border: 1px solid #ddd;
+            border: none;
             padding: 5px 10px;
-            border-radius: var(--border-radius);
             cursor: pointer;
             transition: var(--transition);
+            font-weight: 500;
         }
 
         .lang-switcher button.active {
             background-color: var(--primary-color);
             color: white;
-            border-color: var(--primary-color);
         }
 
         .user-menu {
@@ -110,10 +125,12 @@
             border-radius: 50%;
             margin-left: 10px;
             object-fit: cover;
+            border: 2px solid #e0e0e0;
         }
 
         .user-name {
             font-weight: 600;
+            font-size: 14px;
         }
 
         .dropdown {
@@ -127,10 +144,11 @@
             background-color: white;
             min-width: 160px;
             box-shadow: var(--box-shadow);
-            z-index: 1;
+            z-index: 1001;
             border-radius: var(--border-radius);
             left: 0;
             top: 100%;
+            margin-top: 5px;
         }
 
         .dropdown-content a {
@@ -157,7 +175,7 @@
             border-radius: var(--border-radius);
             cursor: pointer;
             transition: var(--transition);
-            margin-right: 15px;
+            font-size: 14px;
         }
 
         .logout-btn:hover {
@@ -166,16 +184,17 @@
 
         /* Sidebar */
         .sidebar {
-            width: 250px;
+            width: var(--sidebar-width);
             background-color: var(--secondary-color);
             color: white;
             position: fixed;
-            top: 70px;
+            top: var(--header-height);
             bottom: 0;
             left: 0;
             overflow-y: auto;
             z-index: 999;
             transition: var(--transition);
+            transform: translateX(0);
         }
 
         .sidebar-menu {
@@ -188,7 +207,8 @@
         }
 
         .sidebar-menu a {
-            display: block;
+            display: flex;
+            align-items: center;
             padding: 15px 20px;
             color: white;
             text-decoration: none;
@@ -208,9 +228,9 @@
 
         /* Main Content */
         .main-content {
-            margin-right: 250px;
-            padding: 30px;
-            min-height: calc(100vh - 70px);
+            margin-right: var(--sidebar-width);
+            padding: calc(var(--header-height) + 30px) 30px 30px;
+            min-height: 100vh;
             transition: var(--transition);
         }
 
@@ -227,18 +247,23 @@
             box-shadow: var(--box-shadow);
             padding: 20px;
             margin-bottom: 30px;
+            overflow: hidden;
         }
 
         .admin-tabs {
             display: flex;
             border-bottom: 1px solid #ddd;
             margin-bottom: 20px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .admin-tab {
             padding: 10px 20px;
             cursor: pointer;
             border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            font-weight: 500;
         }
 
         .admin-tab.active {
@@ -255,10 +280,19 @@
             display: block;
         }
 
+        /* Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 15px;
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
+        }
+
         .admin-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            min-width: 600px;
         }
 
         .admin-table th, .admin-table td {
@@ -270,6 +304,12 @@
         .admin-table th {
             background-color: #f8f9fa;
             font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .admin-table tr:last-child td {
+            border-bottom: none;
         }
 
         .status-badge {
@@ -277,6 +317,8 @@
             border-radius: 20px;
             font-size: 12px;
             font-weight: bold;
+            white-space: nowrap;
+            display: inline-block;
         }
 
         .status-pending {
@@ -299,6 +341,7 @@
             color: #0c5460;
         }
 
+        /* Button Styles */
         .btn {
             padding: 8px 15px;
             border: none;
@@ -306,6 +349,13 @@
             cursor: pointer;
             transition: var(--transition);
             font-size: 14px;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn i {
             margin-left: 5px;
         }
 
@@ -324,6 +374,13 @@
             color: white;
         }
 
+        .btn-group {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -338,6 +395,12 @@
             padding: 20px;
             display: flex;
             align-items: center;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
         }
 
         .stat-icon {
@@ -350,6 +413,7 @@
             margin-left: 15px;
             font-size: 24px;
             color: white;
+            flex-shrink: 0;
         }
 
         .stat-icon.products {
@@ -368,9 +432,17 @@
             background-color: var(--accent-color);
         }
 
+        .stat-details {
+            flex: 1;
+            min-width: 0;
+        }
+
         .stat-details h3 {
             font-size: 24px;
             margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .stat-details p {
@@ -395,6 +467,7 @@
             border: 1px solid #ddd;
             border-radius: var(--border-radius);
             font-size: 16px;
+            transition: var(--transition);
         }
 
         .form-control:focus {
@@ -406,10 +479,12 @@
         .form-row {
             display: flex;
             gap: 20px;
+            flex-wrap: wrap;
         }
 
         .form-row .form-group {
             flex: 1;
+            min-width: 200px;
         }
 
         /* Loading Spinner */
@@ -441,6 +516,9 @@
             box-shadow: var(--box-shadow);
             transform: translateX(400px);
             transition: transform 0.3s ease;
+            max-width: 80%;
+            display: flex;
+            align-items: center;
         }
 
         .notification.show {
@@ -459,6 +537,10 @@
             background-color: var(--primary-color);
         }
 
+        .notification i {
+            margin-left: 10px;
+        }
+
         /* Modal */
         .modal {
             display: none;
@@ -471,15 +553,25 @@
             z-index: 2000;
             align-items: center;
             justify-content: center;
+            padding: 20px;
+            overflow-y: auto;
         }
 
         .modal-content {
             background-color: white;
             border-radius: var(--border-radius);
-            width: 90%;
+            width: 100%;
             max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
             padding: 30px;
             position: relative;
+            animation: modalFadeIn 0.3s ease;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .modal-header {
@@ -501,6 +593,8 @@
             cursor: pointer;
             color: #777;
             transition: var(--transition);
+            background: none;
+            border: none;
         }
 
         .close-modal:hover {
@@ -512,20 +606,66 @@
             position: relative;
             height: 300px;
             margin: 20px 0;
+            overflow: hidden;
+        }
+
+        /* Mobile Menu Toggle */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: white;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            z-index: 1001;
+            box-shadow: var(--box-shadow);
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .menu-toggle:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
         }
 
         /* Responsive Design */
         @media (max-width: 992px) {
-            .sidebar {
-                width: 200px;
+            :root {
+                --sidebar-width: 200px;
             }
             
-            .main-content {
-                margin-right: 200px;
+            .stats-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            }
+            
+            .stat-card {
+                padding: 15px;
+            }
+            
+            .stat-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+            
+            .stat-details h3 {
+                font-size: 20px;
             }
         }
 
         @media (max-width: 768px) {
+            :root {
+                --sidebar-width: var(--sidebar-collapsed-width);
+            }
+            
             .sidebar {
                 transform: translateX(-100%);
             }
@@ -536,6 +676,7 @@
             
             .main-content {
                 margin-right: 0;
+                padding: calc(var(--header-height) + 20px) 20px 20px;
             }
             
             .stats-grid {
@@ -552,6 +693,90 @@
             
             .admin-table th, .admin-table td {
                 padding: 8px 10px;
+            }
+            
+            .header-content {
+                padding: 0 15px;
+            }
+            
+            .header-actions {
+                gap: 10px;
+            }
+            
+            .user-name {
+                display: none;
+            }
+            
+            .modal-content {
+                padding: 20px;
+            }
+            
+            .page-title {
+                font-size: 24px;
+            }
+            
+            .menu-toggle {
+                display: flex;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .main-content {
+                padding: calc(var(--header-height) + 15px) 15px 15px;
+            }
+            
+            .admin-panel {
+                padding: 15px;
+            }
+            
+            .stat-card {
+                padding: 15px;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .stat-icon {
+                margin-left: 0;
+                margin-bottom: 10px;
+            }
+            
+            .btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .notification {
+                right: 10px;
+                left: 10px;
+                transform: translateY(-100px);
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+            
+            .notification.show {
+                transform: translateY(0);
+            }
+            
+            .modal-content {
+                padding: 15px;
+            }
+            
+            .modal-header {
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .modal-header h2 {
+                font-size: 20px;
+            }
+            
+            .form-group {
+                margin-bottom: 15px;
+            }
+            
+            .form-control {
+                padding: 10px;
+                font-size: 14px;
             }
         }
 
@@ -571,7 +796,7 @@
 
         body[dir="rtl"] .main-content {
             margin-right: 0;
-            margin-left: 250px;
+            margin-left: var(--sidebar-width);
         }
 
         body[dir="rtl"] .sidebar-menu a {
@@ -609,60 +834,57 @@
             margin-right: 5px;
         }
 
-        /* Mobile Menu Toggle */
-        .menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: var(--secondary-color);
+        body[dir="rtl"] .btn i {
+            margin-left: 0;
+            margin-right: 5px;
         }
 
-        @media (max-width: 768px) {
-            .menu-toggle {
-                display: block;
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                width: 50px;
-                height: 50px;
-                border-radius: 50%;
-                background-color: var(--primary-color);
-                color: white;
-                z-index: 1001;
-                box-shadow: var(--box-shadow);
-            }
+        /* Clearfix */
+        .clearfix::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        /* Text center utility */
+        .text-center {
+            text-align: center;
+        }
+
+        /* Section title */
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: var(--secondary-color);
         }
     </style>
 </head>
 <body dir="rtl">
     <!-- Header -->
     <header>
-        <div class="container">
-            <div class="header-content">
-                <div class="logo">
-                    <span>متجر</span>إلكتروني
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-shopping-bag"></i>
+                <span>متجر</span>إلكتروني
+            </div>
+            <div class="header-actions">
+                <div class="lang-switcher">
+                    <button class="lang-btn active" data-lang="ar">العربية</button>
+                    <button class="lang-btn" data-lang="en">English</button>
                 </div>
-                <div class="header-actions">
-                    <div class="lang-switcher">
-                        <button class="lang-btn active" data-lang="ar">العربية</button>
-                        <button class="lang-btn" data-lang="en">English</button>
-                    </div>
-                    <div class="user-menu">
-                        <div class="dropdown">
-                            <div class="user-info">
-                                <img src="https://via.placeholder.com/35" alt="User" class="user-avatar">
-                                <span class="user-name">مدير النظام</span>
-                            </div>
-                            <div class="dropdown-content">
-                                <a href="#" data-page="profile">حسابي</a>
-                                <a href="#" data-page="settings">الإعدادات</a>
-                            </div>
+                <div class="user-menu">
+                    <div class="dropdown">
+                        <div class="user-info">
+                            <img src="https://via.placeholder.com/35" alt="User" class="user-avatar">
+                            <span class="user-name">مدير النظام</span>
+                        </div>
+                        <div class="dropdown-content">
+                            <a href="#" data-page="profile">حسابي</a>
+                            <a href="#" data-page="settings">الإعدادات</a>
                         </div>
                     </div>
-                    <button class="logout-btn">تسجيل الخروج</button>
                 </div>
+                <button class="logout-btn">تسجيل الخروج</button>
             </div>
         </div>
     </header>
@@ -697,25 +919,27 @@
             
             <div class="admin-panel">
                 <h2 class="section-title">آخر الطلبات</h2>
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>رقم الطلب</th>
-                            <th>العميل</th>
-                            <th>التاريخ</th>
-                            <th>المبلغ</th>
-                            <th>الحالة</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recent-orders">
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                <div class="spinner"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>العميل</th>
+                                <th>التاريخ</th>
+                                <th>المبلغ</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-orders">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -730,26 +954,30 @@
                 </div>
                 
                 <div class="admin-tab-content active" id="all-products-tab">
-                    <button class="btn btn-primary" id="add-product-btn">إضافة منتج جديد</button>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>الصورة</th>
-                                <th>اسم المنتج</th>
-                                <th>السعر</th>
-                                <th>الكمية</th>
-                                <th>الحالة</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-products-table">
-                            <tr>
-                                <td colspan="6" class="text-center">
-                                    <div class="spinner"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <button class="btn btn-primary" id="add-product-btn">
+                        <i class="fas fa-plus"></i>إضافة منتج جديد
+                    </button>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>الصورة</th>
+                                    <th>اسم المنتج</th>
+                                    <th>السعر</th>
+                                    <th>الكمية</th>
+                                    <th>الحالة</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-products-table">
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 
                 <div class="admin-tab-content" id="add-product-tab">
@@ -799,7 +1027,9 @@
                             <input type="file" id="product-image" class="form-control">
                         </div>
                         
-                        <button type="submit" class="btn btn-primary">حفظ المنتج</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>حفظ المنتج
+                        </button>
                     </form>
                 </div>
             </div>
@@ -810,25 +1040,27 @@
             <h1 class="page-title">إدارة الطلبات</h1>
             
             <div class="admin-panel">
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>رقم الطلب</th>
-                            <th>العميل</th>
-                            <th>التاريخ</th>
-                            <th>المبلغ</th>
-                            <th>الحالة</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-orders-table">
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                <div class="spinner"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>رقم الطلب</th>
+                                <th>العميل</th>
+                                <th>التاريخ</th>
+                                <th>المبلغ</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-orders-table">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -837,25 +1069,27 @@
             <h1 class="page-title">إدارة العملاء</h1>
             
             <div class="admin-panel">
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>الاسم</th>
-                            <th>البريد الإلكتروني</th>
-                            <th>الهاتف</th>
-                            <th>عدد الطلبات</th>
-                            <th>تاريخ التسجيل</th>
-                            <th>الإجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-customers-table">
-                        <tr>
-                            <td colspan="6" class="text-center">
-                                <div class="spinner"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>البريد الإلكتروني</th>
+                                <th>الهاتف</th>
+                                <th>عدد الطلبات</th>
+                                <th>تاريخ التسجيل</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-customers-table">
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -870,24 +1104,28 @@
                 </div>
                 
                 <div class="admin-tab-content active" id="all-categories-tab">
-                    <button class="btn btn-primary" id="add-category-btn">إضافة تصنيف جديد</button>
-                    <table class="admin-table">
-                        <thead>
-                            <tr>
-                                <th>الاسم (العربية)</th>
-                                <th>الاسم (الإنجليزية)</th>
-                                <th>عدد المنتجات</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-categories-table">
-                            <tr>
-                                <td colspan="4" class="text-center">
-                                    <div class="spinner"></div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <button class="btn btn-primary" id="add-category-btn">
+                        <i class="fas fa-plus"></i>إضافة تصنيف جديد
+                    </button>
+                    <div class="table-responsive">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>الاسم (العربية)</th>
+                                    <th>الاسم (الإنجليزية)</th>
+                                    <th>عدد المنتجات</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-categories-table">
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 
                 <div class="admin-tab-content" id="add-category-tab">
@@ -903,7 +1141,9 @@
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary">حفظ التصنيف</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>حفظ التصنيف
+                        </button>
                     </form>
                 </div>
             </div>
@@ -975,7 +1215,9 @@
                             <textarea id="store-address" class="form-control" rows="3">الرياض، المملكة العربية السعودية</textarea>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary">حفظ الإعدادات</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>حفظ الإعدادات
+                        </button>
                     </form>
                 </div>
                 
@@ -1001,7 +1243,9 @@
                             <input type="password" id="admin-password" class="form-control" placeholder="اتركه فارغاً إذا كنت لا تريد تغييره">
                         </div>
                         
-                        <button type="submit" class="btn btn-primary">تحديث الملف الشخصي</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-edit"></i>تحديث الملف الشخصي
+                        </button>
                     </form>
                 </div>
             </div>
@@ -1013,7 +1257,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>تعديل منتج</h2>
-                <span class="close-modal">&times;</span>
+                <button class="close-modal">&times;</button>
             </div>
             <form id="edit-product-form">
                 <input type="hidden" id="edit-product-id">
@@ -1066,7 +1310,9 @@
                     </select>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">تحديث المنتج</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i>تحديث المنتج
+                </button>
             </form>
         </div>
     </div>
@@ -1076,7 +1322,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>تحديث حالة الطلب</h2>
-                <span class="close-modal">&times;</span>
+                <button class="close-modal">&times;</button>
             </div>
             <form id="order-status-form">
                 <input type="hidden" id="order-id">
@@ -1092,7 +1338,9 @@
                     </select>
                 </div>
                 
-                <button type="submit" class="btn btn-primary">تحديث الحالة</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sync-alt"></i>تحديث الحالة
+                </button>
             </form>
         </div>
     </div>
@@ -1384,6 +1632,11 @@
                     e.preventDefault();
                     const page = this.getAttribute('data-page');
                     navigateToPage(page);
+                    
+                    // Close sidebar on mobile after navigation
+                    if (window.innerWidth <= 768) {
+                        document.getElementById('sidebar').classList.remove('active');
+                    }
                 });
             });
 
@@ -1483,6 +1736,20 @@
                     }
                 });
             }
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', function(e) {
+                const sidebar = document.getElementById('sidebar');
+                const menuToggle = document.getElementById('menu-toggle');
+                
+                if (window.innerWidth <= 768 && 
+                    sidebar && 
+                    sidebar.classList.contains('active') && 
+                    !sidebar.contains(e.target) && 
+                    !menuToggle.contains(e.target)) {
+                    sidebar.classList.remove('active');
+                }
+            });
         }
 
         // Navigate to page
@@ -1653,7 +1920,9 @@
                     <td>${order.total} ر.س</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary view-order" data-id="${order.id}">${translations[currentLanguage].view}</button>
+                        <button class="btn btn-primary view-order" data-id="${order.id}">
+                            <i class="fas fa-eye"></i>${translations[currentLanguage].view}
+                        </button>
                     </td>
                 `;
                 recentOrders.appendChild(row);
@@ -1714,14 +1983,20 @@
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><img src="${product.image_url || 'https://via.placeholder.com/50x50?text=Product'}" alt="${product.name_ar}" style="width: 50px; height: 50px; object-fit: cover;"></td>
+                    <td><img src="${product.image_url || 'https://via.placeholder.com/50x50?text=Product'}" alt="${product.name_ar}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;"></td>
                     <td>${currentLanguage === 'ar' ? product.name_ar : product.name_en}</td>
                     <td>${product.price} ر.س</td>
                     <td>${product.stock}</td>
                     <td><span class="status-badge ${product.status === 'active' ? 'status-delivered' : 'status-pending'}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary edit-product" data-id="${product.id}">${translations[currentLanguage].edit}</button>
-                        <button class="btn btn-danger delete-product" data-id="${product.id}">${translations[currentLanguage].delete}</button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary edit-product" data-id="${product.id}">
+                                <i class="fas fa-edit"></i>${translations[currentLanguage].edit}
+                            </button>
+                            <button class="btn btn-danger delete-product" data-id="${product.id}">
+                                <i class="fas fa-trash"></i>${translations[currentLanguage].delete}
+                            </button>
+                        </div>
                     </td>
                 `;
                 adminProductsTable.appendChild(row);
@@ -1794,8 +2069,14 @@
                     <td>${order.total} ر.س</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary view-order" data-id="${order.id}">${translations[currentLanguage].view}</button>
-                        <button class="btn btn-success update-order-status" data-id="${order.id}">${translations[currentLanguage].update}</button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary view-order" data-id="${order.id}">
+                                <i class="fas fa-eye"></i>${translations[currentLanguage].view}
+                            </button>
+                            <button class="btn btn-success update-order-status" data-id="${order.id}">
+                                <i class="fas fa-sync-alt"></i>${translations[currentLanguage].update}
+                            </button>
+                        </div>
                     </td>
                 `;
                 adminOrdersTable.appendChild(row);
@@ -1862,8 +2143,14 @@
                     <td>${customer.orders_count || 0}</td>
                     <td>${formatDate(customer.created_at)}</td>
                     <td>
-                        <button class="btn btn-primary view-customer" data-id="${customer.id}">${translations[currentLanguage].view}</button>
-                        <button class="btn btn-danger delete-customer" data-id="${customer.id}">${translations[currentLanguage].delete}</button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary view-customer" data-id="${customer.id}">
+                                <i class="fas fa-eye"></i>${translations[currentLanguage].view}
+                            </button>
+                            <button class="btn btn-danger delete-customer" data-id="${customer.id}">
+                                <i class="fas fa-trash"></i>${translations[currentLanguage].delete}
+                            </button>
+                        </div>
                     </td>
                 `;
                 adminCustomersTable.appendChild(row);
@@ -1928,8 +2215,14 @@
                     <td>${category.name_en}</td>
                     <td>${category.products_count || 0}</td>
                     <td>
-                        <button class="btn btn-primary edit-category" data-id="${category.id}">${translations[currentLanguage].edit}</button>
-                        <button class="btn btn-danger delete-category" data-id="${category.id}">${translations[currentLanguage].delete}</button>
+                        <div class="btn-group">
+                            <button class="btn btn-primary edit-category" data-id="${category.id}">
+                                <i class="fas fa-edit"></i>${translations[currentLanguage].edit}
+                            </button>
+                            <button class="btn btn-danger delete-category" data-id="${category.id}">
+                                <i class="fas fa-trash"></i>${translations[currentLanguage].delete}
+                            </button>
+                        </div>
                     </td>
                 `;
                 adminCategoriesTable.appendChild(row);
@@ -2344,24 +2637,26 @@
                 });
                 
                 // Create sales chart
-                const salesCtx = document.getElementById('sales-chart').getContext('2d');
-                new Chart(salesCtx, {
-                    type: 'line',
-                    data: {
-                        labels: Object.keys(salesByDay).sort((a, b) => a - b),
-                        datasets: [{
-                            label: currentLanguage === 'ar' ? 'المبيعات' : 'Sales',
-                            data: Object.keys(salesByDay).sort((a, b) => a - b).map(day => salesByDay[day]),
-                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
-                            borderColor: 'rgba(52, 152, 219, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
+                const salesCtx = document.getElementById('sales-chart');
+                if (salesCtx) {
+                    new Chart(salesCtx, {
+                        type: 'line',
+                        data: {
+                            labels: Object.keys(salesByDay).sort((a, b) => a - b),
+                            datasets: [{
+                                label: currentLanguage === 'ar' ? 'المبيعات' : 'Sales',
+                                data: Object.keys(salesByDay).sort((a, b) => a - b).map(day => salesByDay[day]),
+                                backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                                borderColor: 'rgba(52, 152, 219, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
                 
                 // Load orders by status
                 const { data: ordersByStatusData, error: ordersByStatusError } = await supabase
@@ -2379,35 +2674,37 @@
                 });
                 
                 // Create orders by status chart
-                const ordersCtx = document.getElementById('orders-chart').getContext('2d');
-                new Chart(ordersCtx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: Object.keys(statusCounts).map(status => getStatusText(status)),
-                        datasets: [{
-                            data: Object.values(statusCounts),
-                            backgroundColor: [
-                                'rgba(255, 243, 205, 0.8)',
-                                'rgba(204, 231, 255, 0.8)',
-                                'rgba(212, 237, 218, 0.8)',
-                                'rgba(209, 236, 241, 0.8)',
-                                'rgba(252, 203, 203, 0.8)'
-                            ],
-                            borderColor: [
-                                'rgba(255, 243, 205, 1)',
-                                'rgba(204, 231, 255, 1)',
-                                'rgba(212, 237, 218, 1)',
-                                'rgba(209, 236, 241, 1)',
-                                'rgba(252, 203, 203, 1)'
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
+                const ordersCtx = document.getElementById('orders-chart');
+                if (ordersCtx) {
+                    new Chart(ordersCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(statusCounts).map(status => getStatusText(status)),
+                            datasets: [{
+                                data: Object.values(statusCounts),
+                                backgroundColor: [
+                                    'rgba(255, 243, 205, 0.8)',
+                                    'rgba(204, 231, 255, 0.8)',
+                                    'rgba(212, 237, 218, 0.8)',
+                                    'rgba(209, 236, 241, 0.8)',
+                                    'rgba(252, 203, 203, 0.8)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 243, 205, 1)',
+                                    'rgba(204, 231, 255, 1)',
+                                    'rgba(212, 237, 218, 1)',
+                                    'rgba(209, 236, 241, 1)',
+                                    'rgba(252, 203, 203, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                }
                 
                 // Load top selling products
                 const { data: topProductsData, error: topProductsError } = await supabase
@@ -2436,29 +2733,31 @@
                 });
                 
                 // Create top selling products chart
-                const productsCtx = document.getElementById('products-chart').getContext('2d');
-                new Chart(productsCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(productQuantities),
-                        datasets: [{
-                            label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
-                            data: Object.values(productQuantities),
-                            backgroundColor: 'rgba(46, 204, 113, 0.6)',
-                            borderColor: 'rgba(46, 204, 113, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                const productsCtx = document.getElementById('products-chart');
+                if (productsCtx) {
+                    new Chart(productsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(productQuantities),
+                            datasets: [{
+                                label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
+                                data: Object.values(productQuantities),
+                                backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                                borderColor: 'rgba(46, 204, 113, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
             } catch (error) {
                 console.error('Error loading reports:', error.message);
                 showNotification(translations[currentLanguage].error, 'error');
@@ -2571,11 +2870,14 @@
             // Create notification element
             const notification = document.createElement('div');
             notification.className = `notification notification-${type}`;
+            
+            const icon = type === 'success' ? 'fa-check-circle' : 
+                         type === 'error' ? 'fa-exclamation-circle' : 
+                         'fa-info-circle';
+            
             notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-                    <span>${message}</span>
-                </div>
+                <i class="fas ${icon}"></i>
+                <span>${message}</span>
             `;
             
             // Add to DOM
@@ -2621,21 +2923,21 @@
 
             // Update page titles
             if (currentLanguage === 'ar') {
-                document.querySelector('#dashboard-page .page-title').textContent = 'لوحة التحكم';
-                document.querySelector('#products-page .page-title').textContent = 'إدارة المنتجات';
-                document.querySelector('#orders-page .page-title').textContent = 'إدارة الطلبات';
-                document.querySelector('#customers-page .page-title').textContent = 'إدارة العملاء';
-                document.querySelector('#categories-page .page-title').textContent = 'إدارة التصنيفات';
-                document.querySelector('#reports-page .page-title').textContent = 'التقارير';
-                document.querySelector('#settings-page .page-title').textContent = 'الإعدادات';
+                document.querySelector('#dashboard-page .page-title') && (document.querySelector('#dashboard-page .page-title').textContent = 'لوحة التحكم');
+                document.querySelector('#products-page .page-title') && (document.querySelector('#products-page .page-title').textContent = 'إدارة المنتجات');
+                document.querySelector('#orders-page .page-title') && (document.querySelector('#orders-page .page-title').textContent = 'إدارة الطلبات');
+                document.querySelector('#customers-page .page-title') && (document.querySelector('#customers-page .page-title').textContent = 'إدارة العملاء');
+                document.querySelector('#categories-page .page-title') && (document.querySelector('#categories-page .page-title').textContent = 'إدارة التصنيفات');
+                document.querySelector('#reports-page .page-title') && (document.querySelector('#reports-page .page-title').textContent = 'التقارير');
+                document.querySelector('#settings-page .page-title') && (document.querySelector('#settings-page .page-title').textContent = 'الإعدادات');
             } else {
-                document.querySelector('#dashboard-page .page-title').textContent = 'Dashboard';
-                document.querySelector('#products-page .page-title').textContent = 'Products Management';
-                document.querySelector('#orders-page .page-title').textContent = 'Orders Management';
-                document.querySelector('#customers-page .page-title').textContent = 'Customers Management';
-                document.querySelector('#categories-page .page-title').textContent = 'Categories Management';
-                document.querySelector('#reports-page .page-title').textContent = 'Reports';
-                document.querySelector('#settings-page .page-title').textContent = 'Settings';
+                document.querySelector('#dashboard-page .page-title') && (document.querySelector('#dashboard-page .page-title').textContent = 'Dashboard');
+                document.querySelector('#products-page .page-title') && (document.querySelector('#products-page .page-title').textContent = 'Products Management');
+                document.querySelector('#orders-page .page-title') && (document.querySelector('#orders-page .page-title').textContent = 'Orders Management');
+                document.querySelector('#customers-page .page-title') && (document.querySelector('#customers-page .page-title').textContent = 'Customers Management');
+                document.querySelector('#categories-page .page-title') && (document.querySelector('#categories-page .page-title').textContent = 'Categories Management');
+                document.querySelector('#reports-page .page-title') && (document.querySelector('#reports-page .page-title').textContent = 'Reports');
+                document.querySelector('#settings-page .page-title') && (document.querySelector('#settings-page .page-title').textContent = 'Settings');
             }
 
             // Update admin tabs
@@ -2667,139 +2969,16 @@
             // Update buttons
             const addProductBtn = document.getElementById('add-product-btn');
             if (addProductBtn) {
-                addProductBtn.textContent = currentLanguage === 'ar' ? 'إضافة منتج جديد' : 'Add New Product';
+                addProductBtn.innerHTML = '<i class="fas fa-plus"></i>' + (currentLanguage === 'ar' ? 'إضافة منتج جديد' : 'Add New Product');
             }
             
             const addCategoryBtn = document.getElementById('add-category-btn');
             if (addCategoryBtn) {
-                addCategoryBtn.textContent = currentLanguage === 'ar' ? 'إضافة تصنيف جديد' : 'Add New Category';
+                addCategoryBtn.innerHTML = '<i class="fas fa-plus"></i>' + (currentLanguage === 'ar' ? 'إضافة تصنيف جديد' : 'Add New Category');
             }
             
             // Update form labels
-            if (currentLanguage === 'ar') {
-                document.querySelector('label[for="product-name-ar"]') && (document.querySelector('label[for="product-name-ar"]').textContent = 'اسم المنتج (العربية)');
-                document.querySelector('label[for="product-name-en"]') && (document.querySelector('label[for="product-name-en"]').textContent = 'اسم المنتج (الإنجليزية)');
-                document.querySelector('label[for="product-price"]') && (document.querySelector('label[for="product-price"]').textContent = 'السعر');
-                document.querySelector('label[for="product-stock"]') && (document.querySelector('label[for="product-stock"]').textContent = 'الكمية');
-                document.querySelector('label[for="product-category"]') && (document.querySelector('label[for="product-category"]').textContent = 'التصنيف');
-                document.querySelector('label[for="product-description-ar"]') && (document.querySelector('label[for="product-description-ar"]').textContent = 'الوصف (العربية)');
-                document.querySelector('label[for="product-description-en"]') && (document.querySelector('label[for="product-description-en"]').textContent = 'الوصف (الإنجليزية)');
-                document.querySelector('label[for="product-image"]') && (document.querySelector('label[for="product-image"]').textContent = 'صورة المنتج');
-                
-                document.querySelector('label[for="category-name-ar"]') && (document.querySelector('label[for="category-name-ar"]').textContent = 'اسم التصنيف (العربية)');
-                document.querySelector('label[for="category-name-en"]') && (document.querySelector('label[for="category-name-en"]').textContent = 'اسم التصنيف (الإنجليزية)');
-                
-                document.querySelector('label[for="store-name"]') && (document.querySelector('label[for="store-name"]').textContent = 'اسم المتجر');
-                document.querySelector('label[for="store-email"]') && (document.querySelector('label[for="store-email"]').textContent = 'بريد المتجر الإلكتروني');
-                document.querySelector('label[for="store-phone"]') && (document.querySelector('label[for="store-phone"]').textContent = 'هاتف المتجر');
-                document.querySelector('label[for="store-address"]') && (document.querySelector('label[for="store-address"]').textContent = 'عنوان المتجر');
-                
-                document.querySelector('label[for="admin-name"]') && (document.querySelector('label[for="admin-name"]').textContent = 'الاسم الكامل');
-                document.querySelector('label[for="admin-email"]') && (document.querySelector('label[for="admin-email"]').textContent = 'البريد الإلكتروني');
-                document.querySelector('label[for="admin-phone"]') && (document.querySelector('label[for="admin-phone"]').textContent = 'رقم الهاتف');
-                document.querySelector('label[for="admin-password"]') && (document.querySelector('label[for="admin-password"]').textContent = 'كلمة المرور الجديدة');
-            } else {
-                document.querySelector('label[for="product-name-ar"]') && (document.querySelector('label[for="product-name-ar"]').textContent = 'Product Name (Arabic)');
-                document.querySelector('label[for="product-name-en"]') && (document.querySelector('label[for="product-name-en"]').textContent = 'Product Name (English)');
-                document.querySelector('label[for="product-price"]') && (document.querySelector('label[for="product-price"]').textContent = 'Price');
-                document.querySelector('label[for="product-stock"]') && (document.querySelector('label[for="product-stock"]').textContent = 'Stock');
-                document.querySelector('label[for="product-category"]') && (document.querySelector('label[for="product-category"]').textContent = 'Category');
-                document.querySelector('label[for="product-description-ar"]') && (document.querySelector('label[for="product-description-ar"]').textContent = 'Description (Arabic)');
-                document.querySelector('label[for="product-description-en"]') && (document.querySelector('label[for="product-description-en"]').textContent = 'Description (English)');
-                document.querySelector('label[for="product-image"]') && (document.querySelector('label[for="product-image"]').textContent = 'Product Image');
-                
-                document.querySelector('label[for="category-name-ar"]') && (document.querySelector('label[for="category-name-ar"]').textContent = 'Category Name (Arabic)');
-                document.querySelector('label[for="category-name-en"]') && (document.querySelector('label[for="category-name-en"]').textContent = 'Category Name (English)');
-                
-                document.querySelector('label[for="store-name"]') && (document.querySelector('label[for="store-name"]').textContent = 'Store Name');
-                document.querySelector('label[for="store-email"]') && (document.querySelector('label[for="store-email"]').textContent = 'Store Email');
-                document.querySelector('label[for="store-phone"]') && (document.querySelector('label[for="store-phone"]').textContent = 'Store Phone');
-                document.querySelector('label[for="store-address"]') && (document.querySelector('label[for="store-address"]').textContent = 'Store Address');
-                
-                document.querySelector('label[for="admin-name"]') && (document.querySelector('label[for="admin-name"]').textContent = 'Full Name');
-                document.querySelector('label[for="admin-email"]') && (document.querySelector('label[for="admin-email"]').textContent = 'Email');
-                document.querySelector('label[for="admin-phone"]') && (document.querySelector('label[for="admin-phone"]').textContent = 'Phone');
-                document.querySelector('label[for="admin-password"]') && (document.querySelector('label[for="admin-password"]').textContent = 'New Password');
-            }
-            
-            // Update table headers
-            if (currentLanguage === 'ar') {
-                // Dashboard table
-                document.querySelector('#recent-orders th:nth-child(1)') && (document.querySelector('#recent-orders th:nth-child(1)').textContent = 'رقم الطلب');
-                document.querySelector('#recent-orders th:nth-child(2)') && (document.querySelector('#recent-orders th:nth-child(2)').textContent = 'العميل');
-                document.querySelector('#recent-orders th:nth-child(3)') && (document.querySelector('#recent-orders th:nth-child(3)').textContent = 'التاريخ');
-                document.querySelector('#recent-orders th:nth-child(4)') && (document.querySelector('#recent-orders th:nth-child(4)').textContent = 'المبلغ');
-                document.querySelector('#recent-orders th:nth-child(5)') && (document.querySelector('#recent-orders th:nth-child(5)').textContent = 'الحالة');
-                document.querySelector('#recent-orders th:nth-child(6)') && (document.querySelector('#recent-orders th:nth-child(6)').textContent = 'الإجراءات');
-                
-                // Products table
-                document.querySelector('#admin-products-table th:nth-child(1)') && (document.querySelector('#admin-products-table th:nth-child(1)').textContent = 'الصورة');
-                document.querySelector('#admin-products-table th:nth-child(2)') && (document.querySelector('#admin-products-table th:nth-child(2)').textContent = 'اسم المنتج');
-                document.querySelector('#admin-products-table th:nth-child(3)') && (document.querySelector('#admin-products-table th:nth-child(3)').textContent = 'السعر');
-                document.querySelector('#admin-products-table th:nth-child(4)') && (document.querySelector('#admin-products-table th:nth-child(4)').textContent = 'الكمية');
-                document.querySelector('#admin-products-table th:nth-child(5)') && (document.querySelector('#admin-products-table th:nth-child(5)').textContent = 'الحالة');
-                document.querySelector('#admin-products-table th:nth-child(6)') && (document.querySelector('#admin-products-table th:nth-child(6)').textContent = 'الإجراءات');
-                
-                // Orders table
-                document.querySelector('#admin-orders-table th:nth-child(1)') && (document.querySelector('#admin-orders-table th:nth-child(1)').textContent = 'رقم الطلب');
-                document.querySelector('#admin-orders-table th:nth-child(2)') && (document.querySelector('#admin-orders-table th:nth-child(2)').textContent = 'العميل');
-                document.querySelector('#admin-orders-table th:nth-child(3)') && (document.querySelector('#admin-orders-table th:nth-child(3)').textContent = 'التاريخ');
-                document.querySelector('#admin-orders-table th:nth-child(4)') && (document.querySelector('#admin-orders-table th:nth-child(4)').textContent = 'المبلغ');
-                document.querySelector('#admin-orders-table th:nth-child(5)') && (document.querySelector('#admin-orders-table th:nth-child(5)').textContent = 'الحالة');
-                document.querySelector('#admin-orders-table th:nth-child(6)') && (document.querySelector('#admin-orders-table th:nth-child(6)').textContent = 'الإجراءات');
-                
-                // Customers table
-                document.querySelector('#admin-customers-table th:nth-child(1)') && (document.querySelector('#admin-customers-table th:nth-child(1)').textContent = 'الاسم');
-                document.querySelector('#admin-customers-table th:nth-child(2)') && (document.querySelector('#admin-customers-table th:nth-child(2)').textContent = 'البريد الإلكتروني');
-                document.querySelector('#admin-customers-table th:nth-child(3)') && (document.querySelector('#admin-customers-table th:nth-child(3)').textContent = 'الهاتف');
-                document.querySelector('#admin-customers-table th:nth-child(4)') && (document.querySelector('#admin-customers-table th:nth-child(4)').textContent = 'عدد الطلبات');
-                document.querySelector('#admin-customers-table th:nth-child(5)') && (document.querySelector('#admin-customers-table th:nth-child(5)').textContent = 'تاريخ التسجيل');
-                document.querySelector('#admin-customers-table th:nth-child(6)') && (document.querySelector('#admin-customers-table th:nth-child(6)').textContent = 'الإجراءات');
-                
-                // Categories table
-                document.querySelector('#admin-categories-table th:nth-child(1)') && (document.querySelector('#admin-categories-table th:nth-child(1)').textContent = 'الاسم (العربية)');
-                document.querySelector('#admin-categories-table th:nth-child(2)') && (document.querySelector('#admin-categories-table th:nth-child(2)').textContent = 'الاسم (الإنجليزية)');
-                document.querySelector('#admin-categories-table th:nth-child(3)') && (document.querySelector('#admin-categories-table th:nth-child(3)').textContent = 'عدد المنتجات');
-                document.querySelector('#admin-categories-table th:nth-child(4)') && (document.querySelector('#admin-categories-table th:nth-child(4)').textContent = 'الإجراءات');
-            } else {
-                // Dashboard table
-                document.querySelector('#recent-orders th:nth-child(1)') && (document.querySelector('#recent-orders th:nth-child(1)').textContent = 'Order Number');
-                document.querySelector('#recent-orders th:nth-child(2)') && (document.querySelector('#recent-orders th:nth-child(2)').textContent = 'Customer');
-                document.querySelector('#recent-orders th:nth-child(3)') && (document.querySelector('#recent-orders th:nth-child(3)').textContent = 'Date');
-                document.querySelector('#recent-orders th:nth-child(4)') && (document.querySelector('#recent-orders th:nth-child(4)').textContent = 'Amount');
-                document.querySelector('#recent-orders th:nth-child(5)') && (document.querySelector('#recent-orders th:nth-child(5)').textContent = 'Status');
-                document.querySelector('#recent-orders th:nth-child(6)') && (document.querySelector('#recent-orders th:nth-child(6)').textContent = 'Actions');
-                
-                // Products table
-                document.querySelector('#admin-products-table th:nth-child(1)') && (document.querySelector('#admin-products-table th:nth-child(1)').textContent = 'Image');
-                document.querySelector('#admin-products-table th:nth-child(2)') && (document.querySelector('#admin-products-table th:nth-child(2)').textContent = 'Product Name');
-                document.querySelector('#admin-products-table th:nth-child(3)') && (document.querySelector('#admin-products-table th:nth-child(3)').textContent = 'Price');
-                document.querySelector('#admin-products-table th:nth-child(4)') && (document.querySelector('#admin-products-table th:nth-child(4)').textContent = 'Stock');
-                document.querySelector('#admin-products-table th:nth-child(5)') && (document.querySelector('#admin-products-table th:nth-child(5)').textContent = 'Status');
-                document.querySelector('#admin-products-table th:nth-child(6)') && (document.querySelector('#admin-products-table th:nth-child(6)').textContent = 'Actions');
-                
-                // Orders table
-                document.querySelector('#admin-orders-table th:nth-child(1)') && (document.querySelector('#admin-orders-table th:nth-child(1)').textContent = 'Order Number');
-                document.querySelector('#admin-orders-table th:nth-child(2)') && (document.querySelector('#admin-orders-table th:nth-child(2)').textContent = 'Customer');
-                document.querySelector('#admin-orders-table th:nth-child(3)') && (document.querySelector('#admin-orders-table th:nth-child(3)').textContent = 'Date');
-                document.querySelector('#admin-orders-table th:nth-child(4)') && (document.querySelector('#admin-orders-table th:nth-child(4)').textContent = 'Amount');
-                document.querySelector('#admin-orders-table th:nth-child(5)') && (document.querySelector('#admin-orders-table th:nth-child(5)').textContent = 'Status');
-                document.querySelector('#admin-orders-table th:nth-child(6)') && (document.querySelector('#admin-orders-table th:nth-child(6)').textContent = 'Actions');
-                
-                // Customers table
-                document.querySelector('#admin-customers-table th:nth-child(1)') && (document.querySelector('#admin-customers-table th:nth-child(1)').textContent = 'Name');
-                document.querySelector('#admin-customers-table th:nth-child(2)') && (document.querySelector('#admin-customers-table th:nth-child(2)').textContent = 'Email');
-                document.querySelector('#admin-customers-table th:nth-child(3)') && (document.querySelector('#admin-customers-table th:nth-child(3)').textContent = 'Phone');
-                document.querySelector('#admin-customers-table th:nth-child(4)') && (document.querySelector('#admin-customers-table th:nth-child(4)').textContent = 'Orders Count');
-                document.querySelector('#admin-customers-table th:nth-child(5)') && (document.querySelector('#admin-customers-table th:nth-child(5)').textContent = 'Join Date');
-                document.querySelector('#admin-customers-table th:nth-child(6)') && (document.querySelector('#admin-customers-table th:nth-child(6)').textContent = 'Actions');
-                
-                // Categories table
-                document.querySelector('#admin-categories-table th:nth-child(1)') && (document.querySelector('#admin-categories-table th:nth-child(1)').textContent = 'Name (Arabic)');
-                document.querySelector('#admin-categories-table th:nth-child(2)') && (document.querySelector('#admin-categories-table th:nth-child(2)').textContent = 'Name (English)');
-                document.querySelector('#admin-categories-table th:nth-child(3)') && (document.querySelector('#admin-categories-table th:nth-child(3)').textContent = 'Products Count');
-                document.querySelector('#admin-categories-table th:nth-child(4)') && (document.querySelector('#admin-categories-table th:nth-child(4)').textContent = 'Actions');
-            }
+            updateFormLabels();
             
             // Reload data
             loadDashboardData();
@@ -2807,6 +2986,70 @@
             loadOrders();
             loadCustomers();
             loadCategories();
+        }
+
+        // Update form labels based on language
+        function updateFormLabels() {
+            const labelUpdates = [
+                // Product form labels
+                { id: 'product-name-ar', ar: 'اسم المنتج (العربية)', en: 'Product Name (Arabic)' },
+                { id: 'product-name-en', ar: 'اسم المنتج (الإنجليزية)', en: 'Product Name (English)' },
+                { id: 'product-price', ar: 'السعر', en: 'Price' },
+                { id: 'product-stock', ar: 'الكمية', en: 'Stock' },
+                { id: 'product-category', ar: 'التصنيف', en: 'Category' },
+                { id: 'product-description-ar', ar: 'الوصف (العربية)', en: 'Description (Arabic)' },
+                { id: 'product-description-en', ar: 'الوصف (الإنجليزية)', en: 'Description (English)' },
+                { id: 'product-image', ar: 'صورة المنتج', en: 'Product Image' },
+                
+                // Category form labels
+                { id: 'category-name-ar', ar: 'اسم التصنيف (العربية)', en: 'Category Name (Arabic)' },
+                { id: 'category-name-en', ar: 'اسم التصنيف (الإنجليزية)', en: 'Category Name (English)' },
+                
+                // Settings form labels
+                { id: 'store-name', ar: 'اسم المتجر', en: 'Store Name' },
+                { id: 'store-email', ar: 'بريد المتجر الإلكتروني', en: 'Store Email' },
+                { id: 'store-phone', ar: 'هاتف المتجر', en: 'Store Phone' },
+                { id: 'store-address', ar: 'عنوان المتجر', en: 'Store Address' },
+                { id: 'admin-name', ar: 'الاسم الكامل', en: 'Full Name' },
+                { id: 'admin-email', ar: 'البريد الإلكتروني', en: 'Email' },
+                { id: 'admin-phone', ar: 'رقم الهاتف', en: 'Phone' },
+                { id: 'admin-password', ar: 'كلمة المرور الجديدة', en: 'New Password' }
+            ];
+            
+            labelUpdates.forEach(update => {
+                const label = document.querySelector(`label[for="${update.id}"]`);
+                if (label) {
+                    label.textContent = currentLanguage === 'ar' ? update.ar : update.en;
+                }
+            });
+            
+            // Update select placeholders
+            const selectUpdates = [
+                { id: 'product-category', ar: 'اختر تصنيف', en: 'Select a category' },
+                { id: 'edit-product-category', ar: 'اختر تصنيف', en: 'Select a category' }
+            ];
+            
+            selectUpdates.forEach(update => {
+                const select = document.getElementById(update.id);
+                if (select) {
+                    const option = select.querySelector('option[value=""]');
+                    if (option) {
+                        option.textContent = currentLanguage === 'ar' ? update.ar : update.en;
+                    }
+                }
+            });
+            
+            // Update input placeholders
+            const inputUpdates = [
+                { id: 'admin-password', ar: 'اتركه فارغاً إذا كنت لا تريد تغييره', en: 'Leave empty if you don\'t want to change it' }
+            ];
+            
+            inputUpdates.forEach(update => {
+                const input = document.getElementById(update.id);
+                if (input) {
+                    input.placeholder = currentLanguage === 'ar' ? update.ar : update.en;
+                }
+            });
         }
     </script>
 </body>
