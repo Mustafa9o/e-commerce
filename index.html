@@ -1150,6 +1150,11 @@
             color: #0c5460;
         }
 
+        .status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
         /* Contact Section */
         .contact-section {
             padding: 40px 0;
@@ -1316,6 +1321,139 @@
             padding: 15px 30px;
             width: 100%;
             justify-content: center;
+        }
+
+        /* Checkout Modal */
+        .checkout-form {
+            padding: 30px;
+        }
+
+        .checkout-form h3 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .checkout-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .checkout-form .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .checkout-form .form-control:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        .checkout-summary {
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .checkout-summary h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .checkout-summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .checkout-summary-total {
+            display: flex;
+            justify-content: space-between;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .payment-methods {
+            margin-bottom: 20px;
+        }
+
+        .payment-method {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .payment-method:hover {
+            background-color: #f8f9fa;
+        }
+
+        .payment-method input {
+            margin-left: 10px;
+        }
+
+        .place-order-btn {
+            width: 100%;
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .place-order-btn:hover {
+            background-color: #27ae60;
+        }
+
+        /* Order Success Modal */
+        .order-success-content {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .order-success-icon {
+            font-size: 64px;
+            color: var(--success-color);
+            margin-bottom: 20px;
+        }
+
+        .order-success-content h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+
+        .order-success-content p {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 30px;
+        }
+
+        .order-success-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
         }
 
         /* Footer */
@@ -1947,7 +2085,7 @@
                     <span>المجموع:</span>
                     <span id="cart-total-price">0.00 ر.س</span>
                 </div>
-                <button class="checkout-btn">إتمام الشراء</button>
+                <button class="checkout-btn" id="checkout-btn">إتمام الشراء</button>
             </div>
         </div>
     </div>
@@ -1976,6 +2114,82 @@
                             إضافة إلى السلة
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal" id="checkout-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>إتمام الطلب</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="checkout-form" class="checkout-form">
+                <div class="form-group">
+                    <label for="checkout-name">الاسم الكامل</label>
+                    <input type="text" id="checkout-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkout-phone">رقم الهاتف</label>
+                    <input type="tel" id="checkout-phone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkout-address">العنوان بالتفصيل</label>
+                    <textarea id="checkout-address" class="form-control" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="checkout-city">المدينة</label>
+                    <input type="text" id="checkout-city" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkout-postal">الرمز البريدي</label>
+                    <input type="text" id="checkout-postal" class="form-control">
+                </div>
+                
+                <div class="checkout-summary">
+                    <h4>ملخص الطلب</h4>
+                    <div id="checkout-items-summary">
+                        <!-- Items summary will be dynamically added here -->
+                    </div>
+                    <div class="checkout-summary-total">
+                        <span>المجموع:</span>
+                        <span id="checkout-total-price">0.00 ر.س</span>
+                    </div>
+                </div>
+                
+                <div class="payment-methods">
+                    <h4>طريقة الدفع</h4>
+                    <div class="payment-method">
+                        <input type="radio" id="payment-cod" name="payment-method" value="cod" checked>
+                        <label for="payment-cod">الدفع عند الاستلام (COD)</label>
+                    </div>
+                    <div class="payment-method">
+                        <input type="radio" id="payment-card" name="payment-method" value="card" disabled>
+                        <label for="payment-card">بطاقة الائتمان (قريباً)</label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="place-order-btn">تأكيد الطلب</button>
+                <div id="checkout-error" class="auth-error"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Success Modal -->
+    <div class="modal" id="order-success-modal">
+        <div class="modal-content">
+            <div class="order-success-content">
+                <div class="order-success-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2>تم استلام طلبك بنجاح!</h2>
+                <p>رقم طلبك: <span id="order-number"></span></p>
+                <p>سيتم التواصل معك قريباً لتأكيد الطلب وموعد التوصيل.</p>
+                <div class="order-success-actions">
+                    <button class="btn btn-primary" id="continue-shopping-btn">مواصلة التسوق</button>
+                    <button class="btn btn-secondary" id="view-order-btn">عرض الطلب</button>
                 </div>
             </div>
         </div>
@@ -2111,6 +2325,9 @@
                 signup: 'إنشاء حساب',
                 addToCart: 'إضافة إلى السلة',
                 checkout: 'إتمام الشراء',
+                placeOrder: 'تأكيد الطلب',
+                continueShopping: 'مواصلة التسوق',
+                viewOrder: 'عرض الطلب',
                 
                 // Sections
                 latestProducts: 'أحدث المنتجات',
@@ -2146,6 +2363,15 @@
                 productRemoved: 'تم إزالة المنتج من السلة',
                 loginSuccess: 'تم تسجيل الدخول بنجاح',
                 logoutSuccess: 'تم تسجيل الخروج بنجاح',
+                orderPlaced: 'تم استلام طلبك بنجاح',
+                orderUpdated: 'تم تحديث حالة الطلب',
+                
+                // Order Status
+                pending: 'قيد الانتظار',
+                processing: 'قيد المعالجة',
+                shipped: 'تم الشحن',
+                delivered: 'تم التوصيل',
+                cancelled: 'ملغي',
                 
                 // Common
                 loading: 'جاري التحميل...',
@@ -2153,6 +2379,9 @@
                 noOrders: 'لا توجد طلبات بعد',
                 cartEmpty: 'سلتك فارغة',
                 total: 'المجموع',
+                orderNumber: 'رقم الطلب',
+                orderReceived: 'تم استلام طلبك بنجاح!',
+                willContactSoon: 'سيتم التواصل معك قريباً لتأكيد الطلب وموعد التوصيل.',
                 
                 // Footer
                 footerAboutTitle: 'عن المتجر',
@@ -2184,6 +2413,9 @@
                 signup: 'Sign Up',
                 addToCart: 'Add to Cart',
                 checkout: 'Checkout',
+                placeOrder: 'Place Order',
+                continueShopping: 'Continue Shopping',
+                viewOrder: 'View Order',
                 
                 // Sections
                 latestProducts: 'Latest Products',
@@ -2219,6 +2451,15 @@
                 productRemoved: 'Product removed from cart',
                 loginSuccess: 'Login successful',
                 logoutSuccess: 'Logout successful',
+                orderPlaced: 'Your order has been placed successfully',
+                orderUpdated: 'Order status updated',
+                
+                // Order Status
+                pending: 'Pending',
+                processing: 'Processing',
+                shipped: 'Shipped',
+                delivered: 'Delivered',
+                cancelled: 'Cancelled',
                 
                 // Common
                 loading: 'Loading...',
@@ -2226,6 +2467,9 @@
                 noOrders: 'No orders yet',
                 cartEmpty: 'Your cart is empty',
                 total: 'Total',
+                orderNumber: 'Order Number',
+                orderReceived: 'Your order has been received!',
+                willContactSoon: 'We will contact you soon to confirm your order and delivery time.',
                 
                 // Footer
                 footerAboutTitle: 'About Store',
@@ -2478,11 +2722,11 @@
         // Helper function to get status text
         function getStatusText(status) {
             const statusMap = {
-                'pending': 'قيد الانتظار',
-                'processing': 'قيد المعالجة',
-                'shipped': 'تم الشحن',
-                'delivered': 'تم التوصيل',
-                'cancelled': 'ملغي'
+                'pending': translations[currentLanguage].pending,
+                'processing': translations[currentLanguage].processing,
+                'shipped': translations[currentLanguage].shipped,
+                'delivered': translations[currentLanguage].delivered,
+                'cancelled': translations[currentLanguage].cancelled
             };
             return statusMap[status] || status;
         }
@@ -2610,6 +2854,32 @@
                 });
             }
 
+            // Checkout button
+            const checkoutBtn = document.getElementById('checkout-btn');
+            if (checkoutBtn) {
+                checkoutBtn.addEventListener('click', function() {
+                    if (cart.length === 0) {
+                        showNotification('سلة التسوق فارغة', 'error');
+                        return;
+                    }
+                    
+                    if (!currentUser) {
+                        showNotification('يرجى تسجيل الدخول أولاً', 'error');
+                        document.getElementById('auth-modal').style.display = 'flex';
+                        return;
+                    }
+                    
+                    const cartModal = document.getElementById('cart-modal');
+                    const checkoutModal = document.getElementById('checkout-modal');
+                    
+                    if (cartModal) cartModal.style.display = 'none';
+                    if (checkoutModal) {
+                        checkoutModal.style.display = 'flex';
+                        renderCheckoutSummary();
+                    }
+                });
+            }
+
             // Auth buttons
             const loginBtn = document.getElementById('login-btn');
             const signupBtn = document.getElementById('signup-btn');
@@ -2668,6 +2938,30 @@
             const contactForm = document.getElementById('contact-form');
             if (contactForm) {
                 contactForm.addEventListener('submit', handleContactSubmit);
+            }
+
+            // Checkout form
+            const checkoutForm = document.getElementById('checkout-form');
+            if (checkoutForm) {
+                checkoutForm.addEventListener('submit', handleCheckout);
+            }
+
+            // Order success modal buttons
+            const continueShoppingBtn = document.getElementById('continue-shopping-btn');
+            const viewOrderBtn = document.getElementById('view-order-btn');
+            
+            if (continueShoppingBtn) {
+                continueShoppingBtn.addEventListener('click', function() {
+                    document.getElementById('order-success-modal').style.display = 'none';
+                    navigateToPage('products');
+                });
+            }
+            
+            if (viewOrderBtn) {
+                viewOrderBtn.addEventListener('click', function() {
+                    document.getElementById('order-success-modal').style.display = 'none';
+                    navigateToPage('orders');
+                });
             }
 
             // Close modal buttons
@@ -2984,6 +3278,84 @@
             }
         }
 
+        // Handle checkout form submission
+        async function handleCheckout(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('checkout-name').value;
+            const phone = document.getElementById('checkout-phone').value;
+            const address = document.getElementById('checkout-address').value;
+            const city = document.getElementById('checkout-city').value;
+            const postal = document.getElementById('checkout-postal').value;
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            const errorElement = document.getElementById('checkout-error');
+            
+            // Reset error message
+            if (errorElement) errorElement.textContent = '';
+            
+            try {
+                // Calculate total
+                const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                
+                // Generate order number (timestamp + random number)
+                const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                
+                // Create order in Supabase
+                const { data: orderData, error: orderError } = await supabase
+                    .from('orders')
+                    .insert([
+                        {
+                            user_id: currentUser.id,
+                            order_number: orderNumber,
+                            total: total,
+                            status: 'pending',
+                            delivery_name: name,
+                            delivery_phone: phone,
+                            delivery_address: address,
+                            delivery_city: city,
+                            delivery_postal: postal,
+                            payment_method: paymentMethod
+                        }
+                    ])
+                    .select()
+                    .single();
+                
+                if (orderError) throw orderError;
+                
+                // Create order items
+                const orderItems = cart.map(item => ({
+                    order_id: orderData.id,
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    price: item.price
+                }));
+                
+                const { error: itemsError } = await supabase
+                    .from('order_items')
+                    .insert(orderItems);
+                
+                if (itemsError) throw itemsError;
+                
+                // Clear cart
+                cart = [];
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartCount();
+                
+                // Show success modal
+                document.getElementById('order-number').textContent = orderNumber;
+                document.getElementById('checkout-modal').style.display = 'none';
+                document.getElementById('order-success-modal').style.display = 'flex';
+                
+                // Refresh orders
+                fetchOrders();
+                
+            } catch (error) {
+                if (errorElement) {
+                    errorElement.textContent = 'حدث خطأ أثناء إتمام الطلب: ' + error.message;
+                }
+            }
+        }
+
         // Handle logout
         async function handleLogout() {
             try {
@@ -3151,6 +3523,39 @@
             });
         }
 
+        // Render checkout summary
+        function renderCheckoutSummary() {
+            const checkoutItemsSummary = document.getElementById('checkout-items-summary');
+            const checkoutTotalPrice = document.getElementById('checkout-total-price');
+            
+            if (!checkoutItemsSummary || !checkoutTotalPrice) return;
+            
+            checkoutItemsSummary.innerHTML = '';
+            let total = 0;
+            
+            cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                const checkoutItem = document.createElement('div');
+                checkoutItem.className = 'checkout-summary-item';
+                checkoutItem.innerHTML = `
+                    <span>${currentLanguage === 'ar' ? item.name : item.nameEn} × ${item.quantity}</span>
+                    <span>${itemTotal.toFixed(2)} ر.س</span>
+                `;
+                checkoutItemsSummary.appendChild(checkoutItem);
+            });
+            
+            checkoutTotalPrice.textContent = `${total.toFixed(2)} ر.س`;
+            
+            // Prefill form with user data if available
+            if (userProfile) {
+                document.getElementById('checkout-name').value = userProfile.full_name || '';
+                document.getElementById('checkout-phone').value = userProfile.phone || '';
+                document.getElementById('checkout-address').value = userProfile.address || '';
+            }
+        }
+
         // Update item quantity in cart
         function updateQuantity(productId, change, setExact = false) {
             const item = cart.find(item => item.id === productId);
@@ -3283,6 +3688,31 @@
                 if (addToCartBtn) {
                     addToCartBtn.innerHTML = `<i class="fas fa-shopping-cart"></i> ${t.addToCartDetails}`;
                 }
+            }
+            
+            // Update checkout modal
+            const checkoutModal = document.getElementById('checkout-modal');
+            if (checkoutModal && checkoutModal.style.display === 'flex') {
+                const checkoutTitle = document.querySelector('#checkout-modal h2');
+                const placeOrderBtn = document.querySelector('.place-order-btn');
+                
+                if (checkoutTitle) checkoutTitle.textContent = currentLanguage === 'ar' ? 'إتمام الطلب' : 'Checkout';
+                if (placeOrderBtn) placeOrderBtn.textContent = t.placeOrder;
+                renderCheckoutSummary();
+            }
+            
+            // Update order success modal
+            const orderSuccessModal = document.getElementById('order-success-modal');
+            if (orderSuccessModal && orderSuccessModal.style.display === 'flex') {
+                const orderSuccessTitle = document.querySelector('#order-success-modal h2');
+                const orderSuccessMessage = document.querySelector('#order-success-modal p:nth-of-type(2)');
+                const continueShoppingBtn = document.getElementById('continue-shopping-btn');
+                const viewOrderBtn = document.getElementById('view-order-btn');
+                
+                if (orderSuccessTitle) orderSuccessTitle.textContent = t.orderReceived;
+                if (orderSuccessMessage) orderSuccessMessage.textContent = t.willContactSoon;
+                if (continueShoppingBtn) continueShoppingBtn.textContent = t.continueShopping;
+                if (viewOrderBtn) viewOrderBtn.textContent = t.viewOrder;
             }
             
             // Update footer
