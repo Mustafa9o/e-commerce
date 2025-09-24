@@ -6,6 +6,7 @@
     <title>لوحة التحكم - Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary-color: #3498db;
@@ -174,6 +175,7 @@
             left: 0;
             overflow-y: auto;
             z-index: 999;
+            transition: var(--transition);
         }
 
         .sidebar-menu {
@@ -209,6 +211,7 @@
             margin-right: 250px;
             padding: 30px;
             min-height: calc(100vh - 70px);
+            transition: var(--transition);
         }
 
         .page-title {
@@ -409,63 +412,106 @@
             flex: 1;
         }
 
-        /* Login Screen */
-        .login-screen {
-            display: flex;
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            box-shadow: var(--box-shadow);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-success {
+            background-color: var(--success-color);
+        }
+
+        .notification-error {
+            background-color: var(--danger-color);
+        }
+
+        .notification-info {
+            background-color: var(--primary-color);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            background-color: #f5f7fa;
         }
 
-        .login-container {
+        .modal-content {
             background-color: white;
             border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            width: 100%;
-            max-width: 500px;
-            padding: 40px;
+            width: 90%;
+            max-width: 600px;
+            padding: 30px;
+            position: relative;
         }
 
-        .login-logo {
-            text-align: center;
-            margin-bottom: 30px;
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
         }
 
-        .login-logo h1 {
-            font-size: 32px;
-            color: var(--primary-color);
-        }
-
-        .login-logo span {
+        .modal-header h2 {
+            margin: 0;
             color: var(--secondary-color);
         }
 
-        .login-form {
-            margin-bottom: 20px;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 16px;
-            font-weight: 600;
+        .close-modal {
+            font-size: 24px;
             cursor: pointer;
+            color: #777;
             transition: var(--transition);
         }
 
-        .login-btn:hover {
-            background-color: #2980b9;
+        .close-modal:hover {
+            color: var(--danger-color);
         }
 
-        .login-error {
-            color: var(--danger-color);
-            margin-top: 10px;
-            text-align: center;
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
         }
 
         /* Responsive Design */
@@ -482,7 +528,6 @@
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
             }
             
             .sidebar.active {
@@ -499,6 +544,14 @@
             
             .form-row {
                 flex-direction: column;
+            }
+            
+            .admin-table {
+                font-size: 14px;
+            }
+            
+            .admin-table th, .admin-table td {
+                padding: 8px 10px;
             }
         }
 
@@ -555,6 +608,32 @@
             margin-left: 0;
             margin-right: 5px;
         }
+
+        /* Mobile Menu Toggle */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--secondary-color);
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background-color: var(--primary-color);
+                color: white;
+                z-index: 1001;
+                box-shadow: var(--box-shadow);
+            }
+        }
     </style>
 </head>
 <body dir="rtl">
@@ -589,7 +668,7 @@
     </header>
 
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <ul class="sidebar-menu">
             <li><a href="#" class="active" data-page="dashboard"><i class="fas fa-tachometer-alt"></i>الرئيسية</a></li>
             <li><a href="#" data-page="products"><i class="fas fa-box"></i>المنتجات</a></li>
@@ -601,52 +680,19 @@
         </ul>
     </div>
 
+    <!-- Mobile Menu Toggle -->
+    <button class="menu-toggle" id="menu-toggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
     <!-- Main Content -->
     <div class="main-content">
         <!-- Dashboard Page -->
         <div id="dashboard-page" class="page-content">
             <h1 class="page-title">لوحة التحكم</h1>
             
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon products">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="stat-details">
-                        <h3>24</h3>
-                        <p>المنتجات</p>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon orders">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <div class="stat-details">
-                        <h3>18</h3>
-                        <p>الطلبات</p>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon customers">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-details">
-                        <h3>42</h3>
-                        <p>العملاء</p>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon revenue">
-                        <i class="fas fa-dollar-sign"></i>
-                    </div>
-                    <div class="stat-details">
-                        <h3>24,580</h3>
-                        <p>الإيرادات</p>
-                    </div>
-                </div>
+            <div class="stats-grid" id="stats-grid">
+                <div class="spinner"></div>
             </div>
             
             <div class="admin-panel">
@@ -663,7 +709,11 @@
                         </tr>
                     </thead>
                     <tbody id="recent-orders">
-                        <!-- Orders will be dynamically added here -->
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -693,7 +743,11 @@
                             </tr>
                         </thead>
                         <tbody id="admin-products-table">
-                            <!-- Products will be dynamically added here -->
+                            <tr>
+                                <td colspan="6" class="text-center">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -726,16 +780,18 @@
                             <label for="product-category">التصنيف</label>
                             <select id="product-category" class="form-control" required>
                                 <option value="">اختر تصنيف</option>
-                                <option value="1">إلكترونيات</option>
-                                <option value="2">ملابس</option>
-                                <option value="3">أحذية</option>
-                                <option value="4">أثاث</option>
+                                <!-- Categories will be dynamically added here -->
                             </select>
                         </div>
                         
                         <div class="form-group">
-                            <label for="product-description">الوصف</label>
-                            <textarea id="product-description" class="form-control" rows="4"></textarea>
+                            <label for="product-description-ar">الوصف (العربية)</label>
+                            <textarea id="product-description-ar" class="form-control" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="product-description-en">الوصف (الإنجليزية)</label>
+                            <textarea id="product-description-en" class="form-control" rows="4"></textarea>
                         </div>
                         
                         <div class="form-group">
@@ -766,7 +822,11 @@
                         </tr>
                     </thead>
                     <tbody id="admin-orders-table">
-                        <!-- Orders will be dynamically added here -->
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -789,164 +849,477 @@
                         </tr>
                     </thead>
                     <tbody id="admin-customers-table">
-                        <!-- Customers will be dynamically added here -->
+                        <tr>
+                            <td colspan="6" class="text-center">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- Categories Page -->
+        <div id="categories-page" class="page-content" style="display: none;">
+            <h1 class="page-title">إدارة التصنيفات</h1>
+            
+            <div class="admin-panel">
+                <div class="admin-tabs">
+                    <div class="admin-tab active" data-tab="all-categories">جميع التصنيفات</div>
+                    <div class="admin-tab" data-tab="add-category">إضافة تصنيف</div>
+                </div>
+                
+                <div class="admin-tab-content active" id="all-categories-tab">
+                    <button class="btn btn-primary" id="add-category-btn">إضافة تصنيف جديد</button>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>الاسم (العربية)</th>
+                                <th>الاسم (الإنجليزية)</th>
+                                <th>عدد المنتجات</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-categories-table">
+                            <tr>
+                                <td colspan="4" class="text-center">
+                                    <div class="spinner"></div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="admin-tab-content" id="add-category-tab">
+                    <form id="add-category-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="category-name-ar">اسم التصنيف (العربية)</label>
+                                <input type="text" id="category-name-ar" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="category-name-en">اسم التصنيف (الإنجليزية)</label>
+                                <input type="text" id="category-name-en" class="form-control" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">حفظ التصنيف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Page -->
+        <div id="reports-page" class="page-content" style="display: none;">
+            <h1 class="page-title">التقارير</h1>
+            
+            <div class="admin-panel">
+                <div class="admin-tabs">
+                    <div class="admin-tab active" data-tab="sales-report">تقرير المبيعات</div>
+                    <div class="admin-tab" data-tab="orders-report">تقرير الطلبات</div>
+                    <div class="admin-tab" data-tab="products-report">تقرير المنتجات</div>
+                </div>
+                
+                <div class="admin-tab-content active" id="sales-report-tab">
+                    <h3>مبيعات الشهر الحالي</h3>
+                    <div class="chart-container">
+                        <canvas id="sales-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="admin-tab-content" id="orders-report-tab">
+                    <h3>الطلبات حسب الحالة</h3>
+                    <div class="chart-container">
+                        <canvas id="orders-chart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="admin-tab-content" id="products-report-tab">
+                    <h3>المنتجات الأكثر مبيعاً</h3>
+                    <div class="chart-container">
+                        <canvas id="products-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="settings-page" class="page-content" style="display: none;">
+            <h1 class="page-title">الإعدادات</h1>
+            
+            <div class="admin-panel">
+                <div class="admin-tabs">
+                    <div class="admin-tab active" data-tab="general-settings">إعدادات عامة</div>
+                    <div class="admin-tab" data-tab="profile-settings">الملف الشخصي</div>
+                </div>
+                
+                <div class="admin-tab-content active" id="general-settings-tab">
+                    <form id="general-settings-form">
+                        <div class="form-group">
+                            <label for="store-name">اسم المتجر</label>
+                            <input type="text" id="store-name" class="form-control" value="متجر إلكتروني">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="store-email">بريد المتجر الإلكتروني</label>
+                            <input type="email" id="store-email" class="form-control" value="info@example.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="store-phone">هاتف المتجر</label>
+                            <input type="tel" id="store-phone" class="form-control" value="+966 123 456 789">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="store-address">عنوان المتجر</label>
+                            <textarea id="store-address" class="form-control" rows="3">الرياض، المملكة العربية السعودية</textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">حفظ الإعدادات</button>
+                    </form>
+                </div>
+                
+                <div class="admin-tab-content" id="profile-settings-tab">
+                    <form id="profile-settings-form">
+                        <div class="form-group">
+                            <label for="admin-name">الاسم الكامل</label>
+                            <input type="text" id="admin-name" class="form-control" value="مدير النظام">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-email">البريد الإلكتروني</label>
+                            <input type="email" id="admin-email" class="form-control" value="admin@example.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-phone">رقم الهاتف</label>
+                            <input type="tel" id="admin-phone" class="form-control" value="+966 123 456 789">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="admin-password">كلمة المرور الجديدة</label>
+                            <input type="password" id="admin-password" class="form-control" placeholder="اتركه فارغاً إذا كنت لا تريد تغييره">
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">تحديث الملف الشخصي</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Edit Modal -->
+    <div class="modal" id="edit-product-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>تعديل منتج</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="edit-product-form">
+                <input type="hidden" id="edit-product-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-product-name-ar">اسم المنتج (العربية)</label>
+                        <input type="text" id="edit-product-name-ar" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-name-en">اسم المنتج (الإنجليزية)</label>
+                        <input type="text" id="edit-product-name-en" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="edit-product-price">السعر</label>
+                        <input type="number" id="edit-product-price" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-product-stock">الكمية</label>
+                        <input type="number" id="edit-product-stock" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-product-category">التصنيف</label>
+                    <select id="edit-product-category" class="form-control" required>
+                        <option value="">اختر تصنيف</option>
+                        <!-- Categories will be dynamically added here -->
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-product-description-ar">الوصف (العربية)</label>
+                    <textarea id="edit-product-description-ar" class="form-control" rows="4"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-product-description-en">الوصف (الإنجليزية)</label>
+                    <textarea id="edit-product-description-en" class="form-control" rows="4"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-product-status">الحالة</label>
+                    <select id="edit-product-status" class="form-control" required>
+                        <option value="active">نشط</option>
+                        <option value="inactive">غير نشط</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">تحديث المنتج</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Status Update Modal -->
+    <div class="modal" id="order-status-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>تحديث حالة الطلب</h2>
+                <span class="close-modal">&times;</span>
+            </div>
+            <form id="order-status-form">
+                <input type="hidden" id="order-id">
+                
+                <div class="form-group">
+                    <label for="order-status">الحالة الجديدة</label>
+                    <select id="order-status" class="form-control" required>
+                        <option value="pending">قيد الانتظار</option>
+                        <option value="processing">قيد المعالجة</option>
+                        <option value="shipped">تم الشحن</option>
+                        <option value="delivered">تم التوصيل</option>
+                        <option value="cancelled">ملغي</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">تحديث الحالة</button>
+            </form>
         </div>
     </div>
 
     <script>
         // Initialize Supabase
- const supabaseUrl = 'https://gmdjwwtlfjoiejsaqgdr.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZGp3d3RsZmpvaWVqc2FxZ2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MTA0MTgsImV4cCI6MjA3NDI4NjQxOH0.LcCQYXohWd8w8RDJ0NhzJLjHf3kg64g8iFuDgL1YTjE';
-    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = 'https://gmdjwwtlfjoiejsaqgdr.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtZGp3d3RsZmpvaWVqc2FxZ2RyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg3MTA0MTgsImV4cCI6MjA3NDI4NjQxOH0.LcCQYXohWd8w8RDJ0NhzJLjHf3kg64g8iFuDgL1YTjE';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // Sample data
-        const products = [
-            {
-                id: 1,
-                name: "هاتف ذكي",
-                nameEn: "Smartphone",
-                price: 1999,
-                image: "https://via.placeholder.com/300x200?text=هاتف+ذكي",
-                stock: 10,
-                status: "active"
+        // Translation object
+        const translations = {
+            ar: {
+                // Navigation
+                dashboard: 'الرئيسية',
+                products: 'المنتجات',
+                orders: 'الطلبات',
+                customers: 'العملاء',
+                categories: 'التصنيفات',
+                reports: 'التقارير',
+                settings: 'الإعدادات',
+                
+                // Buttons
+                add: 'إضافة',
+                edit: 'تعديل',
+                delete: 'حذف',
+                view: 'عرض',
+                update: 'تحديث',
+                save: 'حفظ',
+                cancel: 'إلغاء',
+                
+                // Status
+                pending: 'قيد الانتظار',
+                processing: 'قيد المعالجة',
+                shipped: 'تم الشحن',
+                delivered: 'تم التوصيل',
+                cancelled: 'ملغي',
+                active: 'نشط',
+                inactive: 'غير نشط',
+                
+                // Messages
+                productAdded: 'تمت إضافة المنتج بنجاح',
+                productUpdated: 'تم تحديث المنتج بنجاح',
+                productDeleted: 'تم حذف المنتج بنجاح',
+                orderUpdated: 'تم تحديث الطلب بنجاح',
+                categoryAdded: 'تمت إضافة التصنيف بنجاح',
+                categoryUpdated: 'تم تحديث التصنيف بنجاح',
+                categoryDeleted: 'تم حذف التصنيف بنجاح',
+                settingsSaved: 'تم حفظ الإعدادات بنجاح',
+                profileUpdated: 'تم تحديث الملف الشخصي بنجاح',
+                confirmDelete: 'هل أنت متأكد من أنك تريد الحذف؟',
+                error: 'حدث خطأ',
+                loading: 'جاري التحميل...',
+                
+                // Dashboard
+                totalProducts: 'إجمالي المنتجات',
+                totalOrders: 'إجمالي الطلبات',
+                totalCustomers: 'إجمالي العملاء',
+                totalRevenue: 'إجمالي الإيرادات',
+                
+                // Forms
+                productNameAr: 'اسم المنتج (العربية)',
+                productNameEn: 'اسم المنتج (الإنجليزية)',
+                productPrice: 'السعر',
+                productStock: 'الكمية',
+                productCategory: 'التصنيف',
+                productDescriptionAr: 'الوصف (العربية)',
+                productDescriptionEn: 'الوصف (الإنجليزية)',
+                productImage: 'صورة المنتج',
+                categoryNameAr: 'اسم التصنيف (العربية)',
+                categoryNameEn: 'اسم التصنيف (الإنجليزية)',
+                
+                // Tables
+                image: 'الصورة',
+                name: 'الاسم',
+                price: 'السعر',
+                stock: 'الكمية',
+                status: 'الحالة',
+                actions: 'الإجراءات',
+                orderNumber: 'رقم الطلب',
+                customer: 'العميل',
+                date: 'التاريخ',
+                amount: 'المبلغ',
+                email: 'البريد الإلكتروني',
+                phone: 'الهاتف',
+                ordersCount: 'عدد الطلبات',
+                joinDate: 'تاريخ التسجيل',
+                productsCount: 'عدد المنتجات',
+                
+                // Reports
+                salesReport: 'تقرير المبيعات',
+                ordersReport: 'تقرير الطلبات',
+                productsReport: 'تقرير المنتجات',
+                currentMonthSales: 'مبيعات الشهر الحالي',
+                ordersByStatus: 'الطلبات حسب الحالة',
+                topSellingProducts: 'المنتجات الأكثر مبيعاً',
+                
+                // Settings
+                generalSettings: 'إعدادات عامة',
+                profileSettings: 'الملف الشخصي',
+                storeName: 'اسم المتجر',
+                storeEmail: 'بريد المتجر الإلكتروني',
+                storePhone: 'هاتف المتجر',
+                storeAddress: 'عنوان المتجر',
+                adminName: 'الاسم الكامل',
+                adminEmail: 'البريد الإلكتروني',
+                adminPhone: 'رقم الهاتف',
+                adminPassword: 'كلمة المرور الجديدة'
             },
-            {
-                id: 2,
-                name: "لابتوب",
-                nameEn: "Laptop",
-                price: 3499,
-                image: "https://via.placeholder.com/300x200?text=لابتوب",
-                stock: 5,
-                status: "active"
-            },
-            {
-                id: 3,
-                name: "سماعات لاسلكية",
-                nameEn: "Wireless Headphones",
-                price: 599,
-                image: "https://via.placeholder.com/300x200?text=سماعات",
-                stock: 15,
-                status: "active"
-            },
-            {
-                id: 4,
-                name: "ساعة ذكية",
-                nameEn: "Smart Watch",
-                price: 899,
-                image: "https://via.placeholder.com/300x200?text=ساعة+ذكية",
-                stock: 8,
-                status: "active"
-            },
-            {
-                id: 5,
-                name: "كاميرا رقمية",
-                nameEn: "Digital Camera",
-                price: 2499,
-                image: "https://via.placeholder.com/300x200?text=كاميرا",
-                stock: 3,
-                status: "inactive"
-            },
-            {
-                id: 6,
-                name: "جهاز لوحي",
-                nameEn: "Tablet",
-                price: 1299,
-                image: "https://via.placeholder.com/300x200?text=جهاز+لوحي",
-                stock: 7,
-                status: "active"
+            en: {
+                // Navigation
+                dashboard: 'Dashboard',
+                products: 'Products',
+                orders: 'Orders',
+                customers: 'Customers',
+                categories: 'Categories',
+                reports: 'Reports',
+                settings: 'Settings',
+                
+                // Buttons
+                add: 'Add',
+                edit: 'Edit',
+                delete: 'Delete',
+                view: 'View',
+                update: 'Update',
+                save: 'Save',
+                cancel: 'Cancel',
+                
+                // Status
+                pending: 'Pending',
+                processing: 'Processing',
+                shipped: 'Shipped',
+                delivered: 'Delivered',
+                cancelled: 'Cancelled',
+                active: 'Active',
+                inactive: 'Inactive',
+                
+                // Messages
+                productAdded: 'Product added successfully',
+                productUpdated: 'Product updated successfully',
+                productDeleted: 'Product deleted successfully',
+                orderUpdated: 'Order updated successfully',
+                categoryAdded: 'Category added successfully',
+                categoryUpdated: 'Category updated successfully',
+                categoryDeleted: 'Category deleted successfully',
+                settingsSaved: 'Settings saved successfully',
+                profileUpdated: 'Profile updated successfully',
+                confirmDelete: 'Are you sure you want to delete?',
+                error: 'An error occurred',
+                loading: 'Loading...',
+                
+                // Dashboard
+                totalProducts: 'Total Products',
+                totalOrders: 'Total Orders',
+                totalCustomers: 'Total Customers',
+                totalRevenue: 'Total Revenue',
+                
+                // Forms
+                productNameAr: 'Product Name (Arabic)',
+                productNameEn: 'Product Name (English)',
+                productPrice: 'Price',
+                productStock: 'Stock',
+                productCategory: 'Category',
+                productDescriptionAr: 'Description (Arabic)',
+                productDescriptionEn: 'Description (English)',
+                productImage: 'Product Image',
+                categoryNameAr: 'Category Name (Arabic)',
+                categoryNameEn: 'Category Name (English)',
+                
+                // Tables
+                image: 'Image',
+                name: 'Name',
+                price: 'Price',
+                stock: 'Stock',
+                status: 'Status',
+                actions: 'Actions',
+                orderNumber: 'Order Number',
+                customer: 'Customer',
+                date: 'Date',
+                amount: 'Amount',
+                email: 'Email',
+                phone: 'Phone',
+                ordersCount: 'Orders Count',
+                joinDate: 'Join Date',
+                productsCount: 'Products Count',
+                
+                // Reports
+                salesReport: 'Sales Report',
+                ordersReport: 'Orders Report',
+                productsReport: 'Products Report',
+                currentMonthSales: 'Current Month Sales',
+                ordersByStatus: 'Orders by Status',
+                topSellingProducts: 'Top Selling Products',
+                
+                // Settings
+                generalSettings: 'General Settings',
+                profileSettings: 'Profile Settings',
+                storeName: 'Store Name',
+                storeEmail: 'Store Email',
+                storePhone: 'Store Phone',
+                storeAddress: 'Store Address',
+                adminName: 'Full Name',
+                adminEmail: 'Email',
+                adminPhone: 'Phone',
+                adminPassword: 'New Password'
             }
-        ];
-
-        const orders = [
-            {
-                id: 1001,
-                customer: "أحمد محمد",
-                customerEn: "Ahmed Mohammed",
-                date: "2023-10-15",
-                amount: 1999,
-                status: "pending",
-                statusText: "قيد الانتظار"
-            },
-            {
-                id: 1002,
-                customer: "فاطمة عبدالله",
-                customerEn: "Fatima Abdullah",
-                date: "2023-10-14",
-                amount: 3499,
-                status: "processing",
-                statusText: "قيد المعالجة"
-            },
-            {
-                id: 1003,
-                customer: "خالد سعيد",
-                customerEn: "Khalid Saeed",
-                date: "2023-10-13",
-                amount: 599,
-                status: "shipped",
-                statusText: "تم الشحن"
-            },
-            {
-                id: 1004,
-                customer: "نورة راشد",
-                customerEn: "Nora Rashid",
-                date: "2023-10-12",
-                amount: 899,
-                status: "delivered",
-                statusText: "تم التوصيل"
-            }
-        ];
-
-        const customers = [
-            {
-                name: "أحمد محمد",
-                nameEn: "Ahmed Mohammed",
-                email: "ahmed@example.com",
-                phone: "+966 50 123 4567",
-                orders: 3,
-                joinDate: "2023-01-15"
-            },
-            {
-                name: "فاطمة عبدالله",
-                nameEn: "Fatima Abdullah",
-                email: "fatima@example.com",
-                phone: "+966 55 987 6543",
-                orders: 5,
-                joinDate: "2023-02-20"
-            },
-            {
-                name: "خالد سعيد",
-                nameEn: "Khalid Saeed",
-                email: "khalid@example.com",
-                phone: "+966 51 456 7890",
-                orders: 2,
-                joinDate: "2023-03-10"
-            },
-            {
-                name: "نورة راشد",
-                nameEn: "Nora Rashid",
-                email: "nora@example.com",
-                phone: "+966 53 789 0123",
-                orders: 7,
-                joinDate: "2023-04-05"
-            }
-        ];
+        };
 
         // Global variables
         let currentLanguage = 'ar';
         let currentUser = null;
         let isAdmin = false;
+        let products = [];
+        let orders = [];
+        let customers = [];
+        let categories = [];
+        let stats = {};
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthState();
             setupEventListeners();
-            renderRecentOrders();
-            renderAdminProducts();
-            renderAdminOrders();
-            renderAdminCustomers();
+            loadDashboardData();
+            loadProducts();
+            loadOrders();
+            loadCustomers();
+            loadCategories();
         });
 
         // Check authentication state
@@ -1025,23 +1398,91 @@
                     
                     // Show corresponding content
                     document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.remove('active'));
-                    document.getElementById(`${tabName}-tab`).classList.add('active');
+                    const tabContent = document.getElementById(`${tabName}-tab`);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                    }
                 });
             });
 
             // Add product button
-            document.getElementById('add-product-btn').addEventListener('click', function() {
-                document.querySelector('.admin-tab[data-tab="add-product"]').click();
-            });
+            const addProductBtn = document.getElementById('add-product-btn');
+            if (addProductBtn) {
+                addProductBtn.addEventListener('click', function() {
+                    document.querySelector('.admin-tab[data-tab="add-product"]').click();
+                });
+            }
+
+            // Add category button
+            const addCategoryBtn = document.getElementById('add-category-btn');
+            if (addCategoryBtn) {
+                addCategoryBtn.addEventListener('click', function() {
+                    document.querySelector('.admin-tab[data-tab="add-category"]').click();
+                });
+            }
 
             // Add product form
-            document.getElementById('add-product-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-                handleAddProduct();
-            });
+            const addProductForm = document.getElementById('add-product-form');
+            if (addProductForm) {
+                addProductForm.addEventListener('submit', handleAddProduct);
+            }
+
+            // Edit product form
+            const editProductForm = document.getElementById('edit-product-form');
+            if (editProductForm) {
+                editProductForm.addEventListener('submit', handleEditProduct);
+            }
+
+            // Add category form
+            const addCategoryForm = document.getElementById('add-category-form');
+            if (addCategoryForm) {
+                addCategoryForm.addEventListener('submit', handleAddCategory);
+            }
+
+            // Order status form
+            const orderStatusForm = document.getElementById('order-status-form');
+            if (orderStatusForm) {
+                orderStatusForm.addEventListener('submit', handleOrderStatusUpdate);
+            }
+
+            // General settings form
+            const generalSettingsForm = document.getElementById('general-settings-form');
+            if (generalSettingsForm) {
+                generalSettingsForm.addEventListener('submit', handleGeneralSettings);
+            }
+
+            // Profile settings form
+            const profileSettingsForm = document.getElementById('profile-settings-form');
+            if (profileSettingsForm) {
+                profileSettingsForm.addEventListener('submit', handleProfileSettings);
+            }
 
             // Logout button
-            document.querySelector('.logout-btn').addEventListener('click', handleLogout);
+            const logoutBtn = document.querySelector('.logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', handleLogout);
+            }
+
+            // Close modal buttons
+            document.querySelectorAll('.close-modal').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const modal = this.closest('.modal');
+                    if (modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+
+            // Mobile menu toggle
+            const menuToggle = document.getElementById('menu-toggle');
+            if (menuToggle) {
+                menuToggle.addEventListener('click', function() {
+                    const sidebar = document.getElementById('sidebar');
+                    if (sidebar) {
+                        sidebar.classList.toggle('active');
+                    }
+                });
+            }
         }
 
         // Navigate to page
@@ -1052,7 +1493,10 @@
             });
             
             // Show selected page
-            document.getElementById(`${page}-page`).style.display = 'block';
+            const targetPage = document.getElementById(`${page}-page`);
+            if (targetPage) {
+                targetPage.style.display = 'block';
+            }
             
             // Update active nav link
             document.querySelectorAll('.sidebar-menu a').forEach(link => {
@@ -1061,118 +1505,513 @@
                     link.classList.add('active');
                 }
             });
+            
+            // Load page-specific data
+            if (page === 'reports') {
+                loadReports();
+            }
+        }
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                // Load stats
+                const { data: productsData, error: productsError } = await supabase
+                    .from('products')
+                    .select('*', { count: 'exact' })
+                    .eq('status', 'active');
+                
+                if (productsError) throw productsError;
+                
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*', { count: 'exact' });
+                
+                if (ordersError) throw ordersError;
+                
+                const { data: customersData, error: customersError } = await supabase
+                    .from('profiles')
+                    .select('*', { count: 'exact' })
+                    .neq('role', 'admin');
+                
+                if (customersError) throw customersError;
+                
+                const { data: revenueData, error: revenueError } = await supabase
+                    .from('order_items')
+                    .select('price, quantity');
+                
+                if (revenueError) throw revenueError;
+                
+                // Calculate stats
+                stats = {
+                    productsCount: productsData.length,
+                    ordersCount: ordersData.length,
+                    customersCount: customersData.length,
+                    revenue: revenueData.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                };
+                
+                // Render stats
+                renderStats();
+                
+                // Load recent orders
+                const { data: recentOrders, error: recentOrdersError } = await supabase
+                    .from('orders')
+                    .select(`
+                        *,
+                        profiles:customer_id (full_name, email)
+                    `)
+                    .order('created_at', { ascending: false })
+                    .limit(5);
+                
+                if (recentOrdersError) throw recentOrdersError;
+                
+                // Render recent orders
+                renderRecentOrders(recentOrders);
+            } catch (error) {
+                console.error('Error loading dashboard data:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Render stats
+        function renderStats() {
+            const statsGrid = document.getElementById('stats-grid');
+            if (!statsGrid) return;
+            
+            statsGrid.innerHTML = '';
+            
+            const statCards = [
+                {
+                    icon: 'fas fa-box',
+                    class: 'products',
+                    title: translations[currentLanguage].totalProducts,
+                    value: stats.productsCount
+                },
+                {
+                    icon: 'fas fa-shopping-cart',
+                    class: 'orders',
+                    title: translations[currentLanguage].totalOrders,
+                    value: stats.ordersCount
+                },
+                {
+                    icon: 'fas fa-users',
+                    class: 'customers',
+                    title: translations[currentLanguage].totalCustomers,
+                    value: stats.customersCount
+                },
+                {
+                    icon: 'fas fa-dollar-sign',
+                    class: 'revenue',
+                    title: translations[currentLanguage].totalRevenue,
+                    value: stats.revenue.toFixed(2) + ' ر.س'
+                }
+            ];
+            
+            statCards.forEach(stat => {
+                const statCard = document.createElement('div');
+                statCard.className = 'stat-card';
+                statCard.innerHTML = `
+                    <div class="stat-icon ${stat.class}">
+                        <i class="${stat.icon}"></i>
+                    </div>
+                    <div class="stat-details">
+                        <h3>${stat.value}</h3>
+                        <p>${stat.title}</p>
+                    </div>
+                `;
+                statsGrid.appendChild(statCard);
+            });
         }
 
         // Render recent orders
-        function renderRecentOrders() {
+        function renderRecentOrders(orders) {
             const recentOrders = document.getElementById('recent-orders');
+            if (!recentOrders) return;
+            
             recentOrders.innerHTML = '';
             
-            // Show only first 5 orders
-            const ordersToShow = orders.slice(0, 5);
+            if (orders.length === 0) {
+                recentOrders.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            ${currentLanguage === 'ar' ? 'لا توجد طلبات' : 'No orders found'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
             
-            ordersToShow.forEach(order => {
+            orders.forEach(order => {
                 const statusClass = `status-${order.status}`;
+                const statusText = getStatusText(order.status);
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>#${order.id}</td>
-                    <td>${currentLanguage === 'ar' ? order.customer : order.customerEn}</td>
-                    <td>${order.date}</td>
-                    <td>${order.amount} ر.س</td>
-                    <td><span class="status-badge ${statusClass}">${order.statusText}</span></td>
+                    <td>#${order.order_number || order.id}</td>
+                    <td>${order.profiles?.full_name || 'Unknown'}</td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>${order.total} ر.س</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary">${currentLanguage === 'ar' ? 'عرض' : 'View'}</button>
+                        <button class="btn btn-primary view-order" data-id="${order.id}">${translations[currentLanguage].view}</button>
                     </td>
                 `;
                 recentOrders.appendChild(row);
             });
+            
+            // Add event listeners to view buttons
+            document.querySelectorAll('.view-order').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-id');
+                    viewOrder(orderId);
+                });
+            });
         }
 
-        // Render admin products table
-        function renderAdminProducts() {
-            const adminProductsTable = document.getElementById('admin-products-table');
-            adminProductsTable.innerHTML = '';
+        // Load products
+        async function loadProducts() {
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .select(`
+                        *,
+                        categories:category_id (name_ar, name_en)
+                    `);
+                
+                if (error) throw error;
+                
+                products = data || [];
+                renderProducts();
+                populateCategorySelects();
+            } catch (error) {
+                console.error('Error loading products:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
 
+        // Render products
+        function renderProducts() {
+            const adminProductsTable = document.getElementById('admin-products-table');
+            if (!adminProductsTable) return;
+            
+            adminProductsTable.innerHTML = '';
+            
+            if (products.length === 0) {
+                adminProductsTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            ${currentLanguage === 'ar' ? 'لا توجد منتجات' : 'No products found'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             products.forEach(product => {
                 const statusText = product.status === 'active' 
-                    ? (currentLanguage === 'ar' ? 'نشط' : 'Active') 
-                    : (currentLanguage === 'ar' ? 'غير نشط' : 'Inactive');
+                    ? translations[currentLanguage].active 
+                    : translations[currentLanguage].inactive;
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><img src="${product.image}" alt="${product.name}" style="width: 50px; height: 50px; object-fit: cover;"></td>
-                    <td>${currentLanguage === 'ar' ? product.name : product.nameEn}</td>
+                    <td><img src="${product.image_url || 'https://via.placeholder.com/50x50?text=Product'}" alt="${product.name_ar}" style="width: 50px; height: 50px; object-fit: cover;"></td>
+                    <td>${currentLanguage === 'ar' ? product.name_ar : product.name_en}</td>
                     <td>${product.price} ر.س</td>
                     <td>${product.stock}</td>
                     <td><span class="status-badge ${product.status === 'active' ? 'status-delivered' : 'status-pending'}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary">${currentLanguage === 'ar' ? 'تعديل' : 'Edit'}</button>
-                        <button class="btn btn-danger">${currentLanguage === 'ar' ? 'حذف' : 'Delete'}</button>
+                        <button class="btn btn-primary edit-product" data-id="${product.id}">${translations[currentLanguage].edit}</button>
+                        <button class="btn btn-danger delete-product" data-id="${product.id}">${translations[currentLanguage].delete}</button>
                     </td>
                 `;
                 adminProductsTable.appendChild(row);
             });
+            
+            // Add event listeners to edit and delete buttons
+            document.querySelectorAll('.edit-product').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-id');
+                    editProduct(productId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-product').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const productId = this.getAttribute('data-id');
+                    deleteProduct(productId);
+                });
+            });
         }
 
-        // Render admin orders table
-        function renderAdminOrders() {
-            const adminOrdersTable = document.getElementById('admin-orders-table');
-            adminOrdersTable.innerHTML = '';
+        // Load orders
+        async function loadOrders() {
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select(`
+                        *,
+                        profiles:customer_id (full_name, email)
+                    `)
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                orders = data || [];
+                renderOrders();
+            } catch (error) {
+                console.error('Error loading orders:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
 
+        // Render orders
+        function renderOrders() {
+            const adminOrdersTable = document.getElementById('admin-orders-table');
+            if (!adminOrdersTable) return;
+            
+            adminOrdersTable.innerHTML = '';
+            
+            if (orders.length === 0) {
+                adminOrdersTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            ${currentLanguage === 'ar' ? 'لا توجد طلبات' : 'No orders found'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             orders.forEach(order => {
                 const statusClass = `status-${order.status}`;
+                const statusText = getStatusText(order.status);
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>#${order.id}</td>
-                    <td>${currentLanguage === 'ar' ? order.customer : order.customerEn}</td>
-                    <td>${order.date}</td>
-                    <td>${order.amount} ر.س</td>
-                    <td><span class="status-badge ${statusClass}">${order.statusText}</span></td>
+                    <td>#${order.order_number || order.id}</td>
+                    <td>${order.profiles?.full_name || 'Unknown'}</td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>${order.total} ر.س</td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
-                        <button class="btn btn-primary">${currentLanguage === 'ar' ? 'عرض' : 'View'}</button>
-                        <button class="btn btn-success">${currentLanguage === 'ar' ? 'تحديث' : 'Update'}</button>
+                        <button class="btn btn-primary view-order" data-id="${order.id}">${translations[currentLanguage].view}</button>
+                        <button class="btn btn-success update-order-status" data-id="${order.id}">${translations[currentLanguage].update}</button>
                     </td>
                 `;
                 adminOrdersTable.appendChild(row);
             });
+            
+            // Add event listeners to view and update buttons
+            document.querySelectorAll('.view-order').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-id');
+                    viewOrder(orderId);
+                });
+            });
+            
+            document.querySelectorAll('.update-order-status').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const orderId = this.getAttribute('data-id');
+                    updateOrderStatus(orderId);
+                });
+            });
         }
 
-        // Render admin customers table
-        function renderAdminCustomers() {
-            const adminCustomersTable = document.getElementById('admin-customers-table');
-            adminCustomersTable.innerHTML = '';
-
-            customers.forEach(customer => {
-                const customerName = currentLanguage === 'ar' ? customer.name : customer.nameEn;
+        // Load customers
+        async function loadCustomers() {
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .neq('role', 'admin');
                 
+                if (error) throw error;
+                
+                customers = data || [];
+                renderCustomers();
+            } catch (error) {
+                console.error('Error loading customers:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Render customers
+        function renderCustomers() {
+            const adminCustomersTable = document.getElementById('admin-customers-table');
+            if (!adminCustomersTable) return;
+            
+            adminCustomersTable.innerHTML = '';
+            
+            if (customers.length === 0) {
+                adminCustomersTable.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            ${currentLanguage === 'ar' ? 'لا توجد عملاء' : 'No customers found'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            customers.forEach(customer => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${customerName}</td>
+                    <td>${customer.full_name || 'Unknown'}</td>
                     <td>${customer.email}</td>
-                    <td>${customer.phone}</td>
-                    <td>${customer.orders}</td>
-                    <td>${customer.joinDate}</td>
+                    <td>${customer.phone || 'N/A'}</td>
+                    <td>${customer.orders_count || 0}</td>
+                    <td>${formatDate(customer.created_at)}</td>
                     <td>
-                        <button class="btn btn-primary">${currentLanguage === 'ar' ? 'عرض' : 'View'}</button>
-                        <button class="btn btn-danger">${currentLanguage === 'ar' ? 'حذف' : 'Delete'}</button>
+                        <button class="btn btn-primary view-customer" data-id="${customer.id}">${translations[currentLanguage].view}</button>
+                        <button class="btn btn-danger delete-customer" data-id="${customer.id}">${translations[currentLanguage].delete}</button>
                     </td>
                 `;
                 adminCustomersTable.appendChild(row);
             });
+            
+            // Add event listeners to view and delete buttons
+            document.querySelectorAll('.view-customer').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const customerId = this.getAttribute('data-id');
+                    viewCustomer(customerId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-customer').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const customerId = this.getAttribute('data-id');
+                    deleteCustomer(customerId);
+                });
+            });
+        }
+
+        // Load categories
+        async function loadCategories() {
+            try {
+                const { data, error } = await supabase
+                    .from('categories')
+                    .select('*');
+                
+                if (error) throw error;
+                
+                categories = data || [];
+                renderCategories();
+                populateCategorySelects();
+            } catch (error) {
+                console.error('Error loading categories:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Render categories
+        function renderCategories() {
+            const adminCategoriesTable = document.getElementById('admin-categories-table');
+            if (!adminCategoriesTable) return;
+            
+            adminCategoriesTable.innerHTML = '';
+            
+            if (categories.length === 0) {
+                adminCategoriesTable.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center">
+                            ${currentLanguage === 'ar' ? 'لا توجد تصنيفات' : 'No categories found'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            categories.forEach(category => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${category.name_ar}</td>
+                    <td>${category.name_en}</td>
+                    <td>${category.products_count || 0}</td>
+                    <td>
+                        <button class="btn btn-primary edit-category" data-id="${category.id}">${translations[currentLanguage].edit}</button>
+                        <button class="btn btn-danger delete-category" data-id="${category.id}">${translations[currentLanguage].delete}</button>
+                    </td>
+                `;
+                adminCategoriesTable.appendChild(row);
+            });
+            
+            // Add event listeners to edit and delete buttons
+            document.querySelectorAll('.edit-category').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const categoryId = this.getAttribute('data-id');
+                    editCategory(categoryId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-category').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const categoryId = this.getAttribute('data-id');
+                    deleteCategory(categoryId);
+                });
+            });
+        }
+
+        // Populate category selects
+        function populateCategorySelects() {
+            const productCategory = document.getElementById('product-category');
+            const editProductCategory = document.getElementById('edit-product-category');
+            
+            if (productCategory) {
+                productCategory.innerHTML = '<option value="">' + (currentLanguage === 'ar' ? 'اختر تصنيف' : 'Select a category') + '</option>';
+                
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = currentLanguage === 'ar' ? category.name_ar : category.name_en;
+                    productCategory.appendChild(option);
+                });
+            }
+            
+            if (editProductCategory) {
+                editProductCategory.innerHTML = '<option value="">' + (currentLanguage === 'ar' ? 'اختر تصنيف' : 'Select a category') + '</option>';
+                
+                categories.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = currentLanguage === 'ar' ? category.name_ar : category.name_en;
+                    editProductCategory.appendChild(option);
+                });
+            }
         }
 
         // Handle add product
-        async function handleAddProduct() {
+        async function handleAddProduct(e) {
+            e.preventDefault();
+            
             const nameAr = document.getElementById('product-name-ar').value;
             const nameEn = document.getElementById('product-name-en').value;
             const price = document.getElementById('product-price').value;
             const stock = document.getElementById('product-stock').value;
             const category = document.getElementById('product-category').value;
-            const description = document.getElementById('product-description').value;
+            const descriptionAr = document.getElementById('product-description-ar').value;
+            const descriptionEn = document.getElementById('product-description-en').value;
+            const imageFile = document.getElementById('product-image').files[0];
             
             try {
+                let imageUrl = null;
+                
+                // Upload image if provided
+                if (imageFile) {
+                    const fileName = `${Date.now()}_${imageFile.name}`;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('products')
+                        .upload(fileName, imageFile);
+                    
+                    if (uploadError) throw uploadError;
+                    
+                    const { data: urlData } = supabase.storage
+                        .from('products')
+                        .getPublicUrl(fileName);
+                    
+                    imageUrl = urlData.publicUrl;
+                }
+                
+                // Insert product
                 const { data, error } = await supabase
                     .from('products')
                     .insert([
@@ -1182,7 +2021,9 @@
                             price: parseFloat(price),
                             stock: parseInt(stock),
                             category_id: parseInt(category),
-                            description: description,
+                            description_ar: descriptionAr,
+                            description_en: descriptionEn,
+                            image_url: imageUrl,
                             status: 'active'
                         }
                     ])
@@ -1190,16 +2031,503 @@
                 
                 if (error) throw error;
                 
-                alert(currentLanguage === 'ar' ? 'تمت إضافة المنتج بنجاح' : 'Product added successfully');
+                showNotification(translations[currentLanguage].productAdded, 'success');
                 
                 // Reset form
                 document.getElementById('add-product-form').reset();
                 
-                // Refresh products table
-                renderAdminProducts();
+                // Refresh products
+                loadProducts();
+                
+                // Switch to all products tab
+                document.querySelector('.admin-tab[data-tab="all-products"]').click();
             } catch (error) {
                 console.error('Error adding product:', error.message);
-                alert(currentLanguage === 'ar' ? 'حدث خطأ أثناء إضافة المنتج' : 'Error adding product');
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Edit product
+        function editProduct(productId) {
+            const product = products.find(p => p.id === parseInt(productId));
+            if (!product) return;
+            
+            // Populate form
+            document.getElementById('edit-product-id').value = product.id;
+            document.getElementById('edit-product-name-ar').value = product.name_ar;
+            document.getElementById('edit-product-name-en').value = product.name_en;
+            document.getElementById('edit-product-price').value = product.price;
+            document.getElementById('edit-product-stock').value = product.stock;
+            document.getElementById('edit-product-category').value = product.category_id;
+            document.getElementById('edit-product-description-ar').value = product.description_ar || '';
+            document.getElementById('edit-product-description-en').value = product.description_en || '';
+            document.getElementById('edit-product-status').value = product.status;
+            
+            // Show modal
+            document.getElementById('edit-product-modal').style.display = 'flex';
+        }
+
+        // Handle edit product
+        async function handleEditProduct(e) {
+            e.preventDefault();
+            
+            const productId = document.getElementById('edit-product-id').value;
+            const nameAr = document.getElementById('edit-product-name-ar').value;
+            const nameEn = document.getElementById('edit-product-name-en').value;
+            const price = document.getElementById('edit-product-price').value;
+            const stock = document.getElementById('edit-product-stock').value;
+            const category = document.getElementById('edit-product-category').value;
+            const descriptionAr = document.getElementById('edit-product-description-ar').value;
+            const descriptionEn = document.getElementById('edit-product-description-en').value;
+            const status = document.getElementById('edit-product-status').value;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('products')
+                    .update({
+                        name_ar: nameAr,
+                        name_en: nameEn,
+                        price: parseFloat(price),
+                        stock: parseInt(stock),
+                        category_id: parseInt(category),
+                        description_ar: descriptionAr,
+                        description_en: descriptionEn,
+                        status: status
+                    })
+                    .eq('id', productId)
+                    .select();
+                
+                if (error) throw error;
+                
+                showNotification(translations[currentLanguage].productUpdated, 'success');
+                
+                // Close modal
+                document.getElementById('edit-product-modal').style.display = 'none';
+                
+                // Refresh products
+                loadProducts();
+            } catch (error) {
+                console.error('Error updating product:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Delete product
+        async function deleteProduct(productId) {
+            if (!confirm(translations[currentLanguage].confirmDelete)) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('products')
+                    .delete()
+                    .eq('id', productId);
+                
+                if (error) throw error;
+                
+                showNotification(translations[currentLanguage].productDeleted, 'success');
+                
+                // Refresh products
+                loadProducts();
+            } catch (error) {
+                console.error('Error deleting product:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Handle add category
+        async function handleAddCategory(e) {
+            e.preventDefault();
+            
+            const nameAr = document.getElementById('category-name-ar').value;
+            const nameEn = document.getElementById('category-name-en').value;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('categories')
+                    .insert([
+                        {
+                            name_ar: nameAr,
+                            name_en: nameEn
+                        }
+                    ])
+                    .select();
+                
+                if (error) throw error;
+                
+                showNotification(translations[currentLanguage].categoryAdded, 'success');
+                
+                // Reset form
+                document.getElementById('add-category-form').reset();
+                
+                // Refresh categories
+                loadCategories();
+                
+                // Switch to all categories tab
+                document.querySelector('.admin-tab[data-tab="all-categories"]').click();
+            } catch (error) {
+                console.error('Error adding category:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Edit category
+        function editCategory(categoryId) {
+            const category = categories.find(c => c.id === parseInt(categoryId));
+            if (!category) return;
+            
+            // For simplicity, we'll use the same form as add category
+            document.getElementById('category-name-ar').value = category.name_ar;
+            document.getElementById('category-name-en').value = category.name_en;
+            
+            // Change form submission to update instead of insert
+            const addCategoryForm = document.getElementById('add-category-form');
+            addCategoryForm.onsubmit = async function(e) {
+                e.preventDefault();
+                
+                const nameAr = document.getElementById('category-name-ar').value;
+                const nameEn = document.getElementById('category-name-en').value;
+                
+                try {
+                    const { data, error } = await supabase
+                        .from('categories')
+                        .update({
+                            name_ar: nameAr,
+                            name_en: nameEn
+                        })
+                        .eq('id', categoryId)
+                        .select();
+                    
+                    if (error) throw error;
+                    
+                    showNotification(translations[currentLanguage].categoryUpdated, 'success');
+                    
+                    // Reset form
+                    document.getElementById('add-category-form').reset();
+                    
+                    // Refresh categories
+                    loadCategories();
+                    
+                    // Switch to all categories tab
+                    document.querySelector('.admin-tab[data-tab="all-categories"]').click();
+                    
+                    // Reset form submission handler
+                    addCategoryForm.onsubmit = handleAddCategory;
+                } catch (error) {
+                    console.error('Error updating category:', error.message);
+                    showNotification(translations[currentLanguage].error, 'error');
+                }
+            };
+            
+            // Switch to add category tab
+            document.querySelector('.admin-tab[data-tab="add-category"]').click();
+        }
+
+        // Delete category
+        async function deleteCategory(categoryId) {
+            if (!confirm(translations[currentLanguage].confirmDelete)) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('categories')
+                    .delete()
+                    .eq('id', categoryId);
+                
+                if (error) throw error;
+                
+                showNotification(translations[currentLanguage].categoryDeleted, 'success');
+                
+                // Refresh categories
+                loadCategories();
+            } catch (error) {
+                console.error('Error deleting category:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // View order
+        function viewOrder(orderId) {
+            // For simplicity, we'll just show a notification
+            showNotification(currentLanguage === 'ar' ? 'عرض الطلب #' + orderId : 'View Order #' + orderId, 'info');
+        }
+
+        // Update order status
+        function updateOrderStatus(orderId) {
+            const order = orders.find(o => o.id === parseInt(orderId));
+            if (!order) return;
+            
+            // Populate form
+            document.getElementById('order-id').value = order.id;
+            document.getElementById('order-status').value = order.status;
+            
+            // Show modal
+            document.getElementById('order-status-modal').style.display = 'flex';
+        }
+
+        // Handle order status update
+        async function handleOrderStatusUpdate(e) {
+            e.preventDefault();
+            
+            const orderId = document.getElementById('order-id').value;
+            const status = document.getElementById('order-status').value;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .update({
+                        status: status
+                    })
+                    .eq('id', orderId)
+                    .select();
+                
+                if (error) throw error;
+                
+                showNotification(translations[currentLanguage].orderUpdated, 'success');
+                
+                // Close modal
+                document.getElementById('order-status-modal').style.display = 'none';
+                
+                // Refresh orders
+                loadOrders();
+            } catch (error) {
+                console.error('Error updating order status:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // View customer
+        function viewCustomer(customerId) {
+            // For simplicity, we'll just show a notification
+            showNotification(currentLanguage === 'ar' ? 'عرض العميل #' + customerId : 'View Customer #' + customerId, 'info');
+        }
+
+        // Delete customer
+        async function deleteCustomer(customerId) {
+            if (!confirm(translations[currentLanguage].confirmDelete)) return;
+            
+            try {
+                const { error } = await supabase
+                    .from('profiles')
+                    .delete()
+                    .eq('id', customerId);
+                
+                if (error) throw error;
+                
+                showNotification(currentLanguage === 'ar' ? 'تم حذف العميل بنجاح' : 'Customer deleted successfully', 'success');
+                
+                // Refresh customers
+                loadCustomers();
+            } catch (error) {
+                console.error('Error deleting customer:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Load reports
+        async function loadReports() {
+            try {
+                // Load sales data
+                const { data: salesData, error: salesError } = await supabase
+                    .from('orders')
+                    .select('created_at, total')
+                    .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+                
+                if (salesError) throw salesError;
+                
+                // Group sales by day
+                const salesByDay = {};
+                salesData.forEach(order => {
+                    const date = new Date(order.created_at).getDate();
+                    if (!salesByDay[date]) {
+                        salesByDay[date] = 0;
+                    }
+                    salesByDay[date] += order.total;
+                });
+                
+                // Create sales chart
+                const salesCtx = document.getElementById('sales-chart').getContext('2d');
+                new Chart(salesCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(salesByDay).sort((a, b) => a - b),
+                        datasets: [{
+                            label: currentLanguage === 'ar' ? 'المبيعات' : 'Sales',
+                            data: Object.keys(salesByDay).sort((a, b) => a - b).map(day => salesByDay[day]),
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+                
+                // Load orders by status
+                const { data: ordersByStatusData, error: ordersByStatusError } = await supabase
+                    .from('orders')
+                    .select('status');
+                
+                if (ordersByStatusError) throw ordersByStatusError;
+                
+                const statusCounts = {};
+                ordersByStatusData.forEach(order => {
+                    if (!statusCounts[order.status]) {
+                        statusCounts[order.status] = 0;
+                    }
+                    statusCounts[order.status]++;
+                });
+                
+                // Create orders by status chart
+                const ordersCtx = document.getElementById('orders-chart').getContext('2d');
+                new Chart(ordersCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(statusCounts).map(status => getStatusText(status)),
+                        datasets: [{
+                            data: Object.values(statusCounts),
+                            backgroundColor: [
+                                'rgba(255, 243, 205, 0.8)',
+                                'rgba(204, 231, 255, 0.8)',
+                                'rgba(212, 237, 218, 0.8)',
+                                'rgba(209, 236, 241, 0.8)',
+                                'rgba(252, 203, 203, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 243, 205, 1)',
+                                'rgba(204, 231, 255, 1)',
+                                'rgba(212, 237, 218, 1)',
+                                'rgba(209, 236, 241, 1)',
+                                'rgba(252, 203, 203, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+                
+                // Load top selling products
+                const { data: topProductsData, error: topProductsError } = await supabase
+                    .from('order_items')
+                    .select(`
+                        product_id,
+                        products:product_id (name_ar, name_en),
+                        quantity
+                    `)
+                    .order('quantity', { ascending: false })
+                    .limit(5);
+                
+                if (topProductsError) throw topProductsError;
+                
+                // Group by product
+                const productQuantities = {};
+                topProductsData.forEach(item => {
+                    const productName = currentLanguage === 'ar' 
+                        ? item.products?.name_ar || 'Unknown' 
+                        : item.products?.name_en || 'Unknown';
+                    
+                    if (!productQuantities[productName]) {
+                        productQuantities[productName] = 0;
+                    }
+                    productQuantities[productName] += item.quantity;
+                });
+                
+                // Create top selling products chart
+                const productsCtx = document.getElementById('products-chart').getContext('2d');
+                new Chart(productsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(productQuantities),
+                        datasets: [{
+                            label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
+                            data: Object.values(productQuantities),
+                            backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                            borderColor: 'rgba(46, 204, 113, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading reports:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Handle general settings
+        async function handleGeneralSettings(e) {
+            e.preventDefault();
+            
+            const storeName = document.getElementById('store-name').value;
+            const storeEmail = document.getElementById('store-email').value;
+            const storePhone = document.getElementById('store-phone').value;
+            const storeAddress = document.getElementById('store-address').value;
+            
+            try {
+                // In a real application, you would save these settings to a database
+                // For now, we'll just show a success message
+                showNotification(translations[currentLanguage].settingsSaved, 'success');
+            } catch (error) {
+                console.error('Error saving settings:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
+        }
+
+        // Handle profile settings
+        async function handleProfileSettings(e) {
+            e.preventDefault();
+            
+            const adminName = document.getElementById('admin-name').value;
+            const adminEmail = document.getElementById('admin-email').value;
+            const adminPhone = document.getElementById('admin-phone').value;
+            const adminPassword = document.getElementById('admin-password').value;
+            
+            try {
+                // Update profile
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .update({
+                        full_name: adminName,
+                        phone: adminPhone
+                    })
+                    .eq('id', currentUser.id)
+                    .select();
+                
+                if (error) throw error;
+                
+                // Update email if changed
+                if (adminEmail !== currentUser.email) {
+                    const { error: emailError } = await supabase.auth.updateUser({
+                        email: adminEmail
+                    });
+                    
+                    if (emailError) throw emailError;
+                }
+                
+                // Update password if provided
+                if (adminPassword) {
+                    const { error: passwordError } = await supabase.auth.updateUser({
+                        password: adminPassword
+                    });
+                    
+                    if (passwordError) throw passwordError;
+                }
+                
+                showNotification(translations[currentLanguage].profileUpdated, 'success');
+            } catch (error) {
+                console.error('Error updating profile:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
             }
         }
 
@@ -1213,27 +2541,81 @@
             }
         }
 
+        // Helper function to get status text
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': currentLanguage === 'ar' ? 'قيد الانتظار' : 'Pending',
+                'processing': currentLanguage === 'ar' ? 'قيد المعالجة' : 'Processing',
+                'shipped': currentLanguage === 'ar' ? 'تم الشحن' : 'Shipped',
+                'delivered': currentLanguage === 'ar' ? 'تم التوصيل' : 'Delivered',
+                'cancelled': currentLanguage === 'ar' ? 'ملغي' : 'Cancelled'
+            };
+            return statusMap[status] || status;
+        }
+
+        // Helper function to format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString(
+                currentLanguage === 'ar' ? 'ar-SA' : 'en-US',
+                {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                }
+            );
+        }
+
+        // Show notification
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            // Add to DOM
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+
         // Update all text content based on language
         function updateLanguage() {
             // Update sidebar
             document.querySelectorAll('.sidebar-menu a').forEach(link => {
                 const page = link.getAttribute('data-page');
                 if (currentLanguage === 'ar') {
-                    if (page === 'dashboard') link.innerHTML = '<i class="fas fa-tachometer-alt"></i>الرئيسية';
-                    else if (page === 'products') link.innerHTML = '<i class="fas fa-box"></i>المنتجات';
-                    else if (page === 'orders') link.innerHTML = '<i class="fas fa-shopping-cart"></i>الطلبات';
-                    else if (page === 'customers') link.innerHTML = '<i class="fas fa-users"></i>العملاء';
-                    else if (page === 'categories') link.innerHTML = '<i class="fas fa-tags"></i>التصنيفات';
-                    else if (page === 'reports') link.innerHTML = '<i class="fas fa-chart-bar"></i>التقارير';
-                    else if (page === 'settings') link.innerHTML = '<i class="fas fa-cog"></i>الإعدادات';
+                    if (page === 'dashboard') link.innerHTML = '<i class="fas fa-tachometer-alt"></i>' + translations.ar.dashboard;
+                    else if (page === 'products') link.innerHTML = '<i class="fas fa-box"></i>' + translations.ar.products;
+                    else if (page === 'orders') link.innerHTML = '<i class="fas fa-shopping-cart"></i>' + translations.ar.orders;
+                    else if (page === 'customers') link.innerHTML = '<i class="fas fa-users"></i>' + translations.ar.customers;
+                    else if (page === 'categories') link.innerHTML = '<i class="fas fa-tags"></i>' + translations.ar.categories;
+                    else if (page === 'reports') link.innerHTML = '<i class="fas fa-chart-bar"></i>' + translations.ar.reports;
+                    else if (page === 'settings') link.innerHTML = '<i class="fas fa-cog"></i>' + translations.ar.settings;
                 } else {
-                    if (page === 'dashboard') link.innerHTML = '<i class="fas fa-tachometer-alt"></i>Dashboard';
-                    else if (page === 'products') link.innerHTML = '<i class="fas fa-box"></i>Products';
-                    else if (page === 'orders') link.innerHTML = '<i class="fas fa-shopping-cart"></i>Orders';
-                    else if (page === 'customers') link.innerHTML = '<i class="fas fa-users"></i>Customers';
-                    else if (page === 'categories') link.innerHTML = '<i class="fas fa-tags"></i>Categories';
-                    else if (page === 'reports') link.innerHTML = '<i class="fas fa-chart-bar"></i>Reports';
-                    else if (page === 'settings') link.innerHTML = '<i class="fas fa-cog"></i>Settings';
+                    if (page === 'dashboard') link.innerHTML = '<i class="fas fa-tachometer-alt"></i>' + translations.en.dashboard;
+                    else if (page === 'products') link.innerHTML = '<i class="fas fa-box"></i>' + translations.en.products;
+                    else if (page === 'orders') link.innerHTML = '<i class="fas fa-shopping-cart"></i>' + translations.en.orders;
+                    else if (page === 'customers') link.innerHTML = '<i class="fas fa-users"></i>' + translations.en.customers;
+                    else if (page === 'categories') link.innerHTML = '<i class="fas fa-tags"></i>' + translations.en.categories;
+                    else if (page === 'reports') link.innerHTML = '<i class="fas fa-chart-bar"></i>' + translations.en.reports;
+                    else if (page === 'settings') link.innerHTML = '<i class="fas fa-cog"></i>' + translations.en.settings;
                 }
             });
 
@@ -1243,18 +2625,188 @@
                 document.querySelector('#products-page .page-title').textContent = 'إدارة المنتجات';
                 document.querySelector('#orders-page .page-title').textContent = 'إدارة الطلبات';
                 document.querySelector('#customers-page .page-title').textContent = 'إدارة العملاء';
+                document.querySelector('#categories-page .page-title').textContent = 'إدارة التصنيفات';
+                document.querySelector('#reports-page .page-title').textContent = 'التقارير';
+                document.querySelector('#settings-page .page-title').textContent = 'الإعدادات';
             } else {
                 document.querySelector('#dashboard-page .page-title').textContent = 'Dashboard';
                 document.querySelector('#products-page .page-title').textContent = 'Products Management';
                 document.querySelector('#orders-page .page-title').textContent = 'Orders Management';
                 document.querySelector('#customers-page .page-title').textContent = 'Customers Management';
+                document.querySelector('#categories-page .page-title').textContent = 'Categories Management';
+                document.querySelector('#reports-page .page-title').textContent = 'Reports';
+                document.querySelector('#settings-page .page-title').textContent = 'Settings';
             }
 
-            // Update admin tables
-            renderRecentOrders();
-            renderAdminProducts();
-            renderAdminOrders();
-            renderAdminCustomers();
+            // Update admin tabs
+            document.querySelectorAll('.admin-tab').forEach(tab => {
+                const tabName = tab.getAttribute('data-tab');
+                if (currentLanguage === 'ar') {
+                    if (tabName === 'all-products') tab.textContent = 'جميع المنتجات';
+                    else if (tabName === 'add-product') tab.textContent = 'إضافة منتج';
+                    else if (tabName === 'all-categories') tab.textContent = 'جميع التصنيفات';
+                    else if (tabName === 'add-category') tab.textContent = 'إضافة تصنيف';
+                    else if (tabName === 'sales-report') tab.textContent = 'تقرير المبيعات';
+                    else if (tabName === 'orders-report') tab.textContent = 'تقرير الطلبات';
+                    else if (tabName === 'products-report') tab.textContent = 'تقرير المنتجات';
+                    else if (tabName === 'general-settings') tab.textContent = 'إعدادات عامة';
+                    else if (tabName === 'profile-settings') tab.textContent = 'الملف الشخصي';
+                } else {
+                    if (tabName === 'all-products') tab.textContent = 'All Products';
+                    else if (tabName === 'add-product') tab.textContent = 'Add Product';
+                    else if (tabName === 'all-categories') tab.textContent = 'All Categories';
+                    else if (tabName === 'add-category') tab.textContent = 'Add Category';
+                    else if (tabName === 'sales-report') tab.textContent = 'Sales Report';
+                    else if (tabName === 'orders-report') tab.textContent = 'Orders Report';
+                    else if (tabName === 'products-report') tab.textContent = 'Products Report';
+                    else if (tabName === 'general-settings') tab.textContent = 'General Settings';
+                    else if (tabName === 'profile-settings') tab.textContent = 'Profile Settings';
+                }
+            });
+
+            // Update buttons
+            const addProductBtn = document.getElementById('add-product-btn');
+            if (addProductBtn) {
+                addProductBtn.textContent = currentLanguage === 'ar' ? 'إضافة منتج جديد' : 'Add New Product';
+            }
+            
+            const addCategoryBtn = document.getElementById('add-category-btn');
+            if (addCategoryBtn) {
+                addCategoryBtn.textContent = currentLanguage === 'ar' ? 'إضافة تصنيف جديد' : 'Add New Category';
+            }
+            
+            // Update form labels
+            if (currentLanguage === 'ar') {
+                document.querySelector('label[for="product-name-ar"]') && (document.querySelector('label[for="product-name-ar"]').textContent = 'اسم المنتج (العربية)');
+                document.querySelector('label[for="product-name-en"]') && (document.querySelector('label[for="product-name-en"]').textContent = 'اسم المنتج (الإنجليزية)');
+                document.querySelector('label[for="product-price"]') && (document.querySelector('label[for="product-price"]').textContent = 'السعر');
+                document.querySelector('label[for="product-stock"]') && (document.querySelector('label[for="product-stock"]').textContent = 'الكمية');
+                document.querySelector('label[for="product-category"]') && (document.querySelector('label[for="product-category"]').textContent = 'التصنيف');
+                document.querySelector('label[for="product-description-ar"]') && (document.querySelector('label[for="product-description-ar"]').textContent = 'الوصف (العربية)');
+                document.querySelector('label[for="product-description-en"]') && (document.querySelector('label[for="product-description-en"]').textContent = 'الوصف (الإنجليزية)');
+                document.querySelector('label[for="product-image"]') && (document.querySelector('label[for="product-image"]').textContent = 'صورة المنتج');
+                
+                document.querySelector('label[for="category-name-ar"]') && (document.querySelector('label[for="category-name-ar"]').textContent = 'اسم التصنيف (العربية)');
+                document.querySelector('label[for="category-name-en"]') && (document.querySelector('label[for="category-name-en"]').textContent = 'اسم التصنيف (الإنجليزية)');
+                
+                document.querySelector('label[for="store-name"]') && (document.querySelector('label[for="store-name"]').textContent = 'اسم المتجر');
+                document.querySelector('label[for="store-email"]') && (document.querySelector('label[for="store-email"]').textContent = 'بريد المتجر الإلكتروني');
+                document.querySelector('label[for="store-phone"]') && (document.querySelector('label[for="store-phone"]').textContent = 'هاتف المتجر');
+                document.querySelector('label[for="store-address"]') && (document.querySelector('label[for="store-address"]').textContent = 'عنوان المتجر');
+                
+                document.querySelector('label[for="admin-name"]') && (document.querySelector('label[for="admin-name"]').textContent = 'الاسم الكامل');
+                document.querySelector('label[for="admin-email"]') && (document.querySelector('label[for="admin-email"]').textContent = 'البريد الإلكتروني');
+                document.querySelector('label[for="admin-phone"]') && (document.querySelector('label[for="admin-phone"]').textContent = 'رقم الهاتف');
+                document.querySelector('label[for="admin-password"]') && (document.querySelector('label[for="admin-password"]').textContent = 'كلمة المرور الجديدة');
+            } else {
+                document.querySelector('label[for="product-name-ar"]') && (document.querySelector('label[for="product-name-ar"]').textContent = 'Product Name (Arabic)');
+                document.querySelector('label[for="product-name-en"]') && (document.querySelector('label[for="product-name-en"]').textContent = 'Product Name (English)');
+                document.querySelector('label[for="product-price"]') && (document.querySelector('label[for="product-price"]').textContent = 'Price');
+                document.querySelector('label[for="product-stock"]') && (document.querySelector('label[for="product-stock"]').textContent = 'Stock');
+                document.querySelector('label[for="product-category"]') && (document.querySelector('label[for="product-category"]').textContent = 'Category');
+                document.querySelector('label[for="product-description-ar"]') && (document.querySelector('label[for="product-description-ar"]').textContent = 'Description (Arabic)');
+                document.querySelector('label[for="product-description-en"]') && (document.querySelector('label[for="product-description-en"]').textContent = 'Description (English)');
+                document.querySelector('label[for="product-image"]') && (document.querySelector('label[for="product-image"]').textContent = 'Product Image');
+                
+                document.querySelector('label[for="category-name-ar"]') && (document.querySelector('label[for="category-name-ar"]').textContent = 'Category Name (Arabic)');
+                document.querySelector('label[for="category-name-en"]') && (document.querySelector('label[for="category-name-en"]').textContent = 'Category Name (English)');
+                
+                document.querySelector('label[for="store-name"]') && (document.querySelector('label[for="store-name"]').textContent = 'Store Name');
+                document.querySelector('label[for="store-email"]') && (document.querySelector('label[for="store-email"]').textContent = 'Store Email');
+                document.querySelector('label[for="store-phone"]') && (document.querySelector('label[for="store-phone"]').textContent = 'Store Phone');
+                document.querySelector('label[for="store-address"]') && (document.querySelector('label[for="store-address"]').textContent = 'Store Address');
+                
+                document.querySelector('label[for="admin-name"]') && (document.querySelector('label[for="admin-name"]').textContent = 'Full Name');
+                document.querySelector('label[for="admin-email"]') && (document.querySelector('label[for="admin-email"]').textContent = 'Email');
+                document.querySelector('label[for="admin-phone"]') && (document.querySelector('label[for="admin-phone"]').textContent = 'Phone');
+                document.querySelector('label[for="admin-password"]') && (document.querySelector('label[for="admin-password"]').textContent = 'New Password');
+            }
+            
+            // Update table headers
+            if (currentLanguage === 'ar') {
+                // Dashboard table
+                document.querySelector('#recent-orders th:nth-child(1)') && (document.querySelector('#recent-orders th:nth-child(1)').textContent = 'رقم الطلب');
+                document.querySelector('#recent-orders th:nth-child(2)') && (document.querySelector('#recent-orders th:nth-child(2)').textContent = 'العميل');
+                document.querySelector('#recent-orders th:nth-child(3)') && (document.querySelector('#recent-orders th:nth-child(3)').textContent = 'التاريخ');
+                document.querySelector('#recent-orders th:nth-child(4)') && (document.querySelector('#recent-orders th:nth-child(4)').textContent = 'المبلغ');
+                document.querySelector('#recent-orders th:nth-child(5)') && (document.querySelector('#recent-orders th:nth-child(5)').textContent = 'الحالة');
+                document.querySelector('#recent-orders th:nth-child(6)') && (document.querySelector('#recent-orders th:nth-child(6)').textContent = 'الإجراءات');
+                
+                // Products table
+                document.querySelector('#admin-products-table th:nth-child(1)') && (document.querySelector('#admin-products-table th:nth-child(1)').textContent = 'الصورة');
+                document.querySelector('#admin-products-table th:nth-child(2)') && (document.querySelector('#admin-products-table th:nth-child(2)').textContent = 'اسم المنتج');
+                document.querySelector('#admin-products-table th:nth-child(3)') && (document.querySelector('#admin-products-table th:nth-child(3)').textContent = 'السعر');
+                document.querySelector('#admin-products-table th:nth-child(4)') && (document.querySelector('#admin-products-table th:nth-child(4)').textContent = 'الكمية');
+                document.querySelector('#admin-products-table th:nth-child(5)') && (document.querySelector('#admin-products-table th:nth-child(5)').textContent = 'الحالة');
+                document.querySelector('#admin-products-table th:nth-child(6)') && (document.querySelector('#admin-products-table th:nth-child(6)').textContent = 'الإجراءات');
+                
+                // Orders table
+                document.querySelector('#admin-orders-table th:nth-child(1)') && (document.querySelector('#admin-orders-table th:nth-child(1)').textContent = 'رقم الطلب');
+                document.querySelector('#admin-orders-table th:nth-child(2)') && (document.querySelector('#admin-orders-table th:nth-child(2)').textContent = 'العميل');
+                document.querySelector('#admin-orders-table th:nth-child(3)') && (document.querySelector('#admin-orders-table th:nth-child(3)').textContent = 'التاريخ');
+                document.querySelector('#admin-orders-table th:nth-child(4)') && (document.querySelector('#admin-orders-table th:nth-child(4)').textContent = 'المبلغ');
+                document.querySelector('#admin-orders-table th:nth-child(5)') && (document.querySelector('#admin-orders-table th:nth-child(5)').textContent = 'الحالة');
+                document.querySelector('#admin-orders-table th:nth-child(6)') && (document.querySelector('#admin-orders-table th:nth-child(6)').textContent = 'الإجراءات');
+                
+                // Customers table
+                document.querySelector('#admin-customers-table th:nth-child(1)') && (document.querySelector('#admin-customers-table th:nth-child(1)').textContent = 'الاسم');
+                document.querySelector('#admin-customers-table th:nth-child(2)') && (document.querySelector('#admin-customers-table th:nth-child(2)').textContent = 'البريد الإلكتروني');
+                document.querySelector('#admin-customers-table th:nth-child(3)') && (document.querySelector('#admin-customers-table th:nth-child(3)').textContent = 'الهاتف');
+                document.querySelector('#admin-customers-table th:nth-child(4)') && (document.querySelector('#admin-customers-table th:nth-child(4)').textContent = 'عدد الطلبات');
+                document.querySelector('#admin-customers-table th:nth-child(5)') && (document.querySelector('#admin-customers-table th:nth-child(5)').textContent = 'تاريخ التسجيل');
+                document.querySelector('#admin-customers-table th:nth-child(6)') && (document.querySelector('#admin-customers-table th:nth-child(6)').textContent = 'الإجراءات');
+                
+                // Categories table
+                document.querySelector('#admin-categories-table th:nth-child(1)') && (document.querySelector('#admin-categories-table th:nth-child(1)').textContent = 'الاسم (العربية)');
+                document.querySelector('#admin-categories-table th:nth-child(2)') && (document.querySelector('#admin-categories-table th:nth-child(2)').textContent = 'الاسم (الإنجليزية)');
+                document.querySelector('#admin-categories-table th:nth-child(3)') && (document.querySelector('#admin-categories-table th:nth-child(3)').textContent = 'عدد المنتجات');
+                document.querySelector('#admin-categories-table th:nth-child(4)') && (document.querySelector('#admin-categories-table th:nth-child(4)').textContent = 'الإجراءات');
+            } else {
+                // Dashboard table
+                document.querySelector('#recent-orders th:nth-child(1)') && (document.querySelector('#recent-orders th:nth-child(1)').textContent = 'Order Number');
+                document.querySelector('#recent-orders th:nth-child(2)') && (document.querySelector('#recent-orders th:nth-child(2)').textContent = 'Customer');
+                document.querySelector('#recent-orders th:nth-child(3)') && (document.querySelector('#recent-orders th:nth-child(3)').textContent = 'Date');
+                document.querySelector('#recent-orders th:nth-child(4)') && (document.querySelector('#recent-orders th:nth-child(4)').textContent = 'Amount');
+                document.querySelector('#recent-orders th:nth-child(5)') && (document.querySelector('#recent-orders th:nth-child(5)').textContent = 'Status');
+                document.querySelector('#recent-orders th:nth-child(6)') && (document.querySelector('#recent-orders th:nth-child(6)').textContent = 'Actions');
+                
+                // Products table
+                document.querySelector('#admin-products-table th:nth-child(1)') && (document.querySelector('#admin-products-table th:nth-child(1)').textContent = 'Image');
+                document.querySelector('#admin-products-table th:nth-child(2)') && (document.querySelector('#admin-products-table th:nth-child(2)').textContent = 'Product Name');
+                document.querySelector('#admin-products-table th:nth-child(3)') && (document.querySelector('#admin-products-table th:nth-child(3)').textContent = 'Price');
+                document.querySelector('#admin-products-table th:nth-child(4)') && (document.querySelector('#admin-products-table th:nth-child(4)').textContent = 'Stock');
+                document.querySelector('#admin-products-table th:nth-child(5)') && (document.querySelector('#admin-products-table th:nth-child(5)').textContent = 'Status');
+                document.querySelector('#admin-products-table th:nth-child(6)') && (document.querySelector('#admin-products-table th:nth-child(6)').textContent = 'Actions');
+                
+                // Orders table
+                document.querySelector('#admin-orders-table th:nth-child(1)') && (document.querySelector('#admin-orders-table th:nth-child(1)').textContent = 'Order Number');
+                document.querySelector('#admin-orders-table th:nth-child(2)') && (document.querySelector('#admin-orders-table th:nth-child(2)').textContent = 'Customer');
+                document.querySelector('#admin-orders-table th:nth-child(3)') && (document.querySelector('#admin-orders-table th:nth-child(3)').textContent = 'Date');
+                document.querySelector('#admin-orders-table th:nth-child(4)') && (document.querySelector('#admin-orders-table th:nth-child(4)').textContent = 'Amount');
+                document.querySelector('#admin-orders-table th:nth-child(5)') && (document.querySelector('#admin-orders-table th:nth-child(5)').textContent = 'Status');
+                document.querySelector('#admin-orders-table th:nth-child(6)') && (document.querySelector('#admin-orders-table th:nth-child(6)').textContent = 'Actions');
+                
+                // Customers table
+                document.querySelector('#admin-customers-table th:nth-child(1)') && (document.querySelector('#admin-customers-table th:nth-child(1)').textContent = 'Name');
+                document.querySelector('#admin-customers-table th:nth-child(2)') && (document.querySelector('#admin-customers-table th:nth-child(2)').textContent = 'Email');
+                document.querySelector('#admin-customers-table th:nth-child(3)') && (document.querySelector('#admin-customers-table th:nth-child(3)').textContent = 'Phone');
+                document.querySelector('#admin-customers-table th:nth-child(4)') && (document.querySelector('#admin-customers-table th:nth-child(4)').textContent = 'Orders Count');
+                document.querySelector('#admin-customers-table th:nth-child(5)') && (document.querySelector('#admin-customers-table th:nth-child(5)').textContent = 'Join Date');
+                document.querySelector('#admin-customers-table th:nth-child(6)') && (document.querySelector('#admin-customers-table th:nth-child(6)').textContent = 'Actions');
+                
+                // Categories table
+                document.querySelector('#admin-categories-table th:nth-child(1)') && (document.querySelector('#admin-categories-table th:nth-child(1)').textContent = 'Name (Arabic)');
+                document.querySelector('#admin-categories-table th:nth-child(2)') && (document.querySelector('#admin-categories-table th:nth-child(2)').textContent = 'Name (English)');
+                document.querySelector('#admin-categories-table th:nth-child(3)') && (document.querySelector('#admin-categories-table th:nth-child(3)').textContent = 'Products Count');
+                document.querySelector('#admin-categories-table th:nth-child(4)') && (document.querySelector('#admin-categories-table th:nth-child(4)').textContent = 'Actions');
+            }
+            
+            // Reload data
+            loadDashboardData();
+            loadProducts();
+            loadOrders();
+            loadCustomers();
+            loadCategories();
         }
     </script>
 </body>
