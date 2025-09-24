@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* All existing CSS remains the same */
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
@@ -1655,8 +1656,8 @@
                     </div>
                     
                     <div class="search-bar">
-                        <input type="text" placeholder="ابحث عن منتج...">
-                        <button type="button"><i class="fas fa-search"></i></button>
+                        <input type="text" id="search-input" placeholder="ابحث عن منتج...">
+                        <button type="button" id="search-button"><i class="fas fa-search"></i></button>
                     </div>
                     
                     <div class="header-actions">
@@ -2035,8 +2036,8 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-section">
-                    <h3>عن المتجر</h3>
-                    <p>متجر إلكتروني متخصص في بيع أحدث المنتجات بأفضل الأسعار وجودة عالية.</p>
+                    <h3 id="footer-about-title">عن المتجر</h3>
+                    <p id="footer-about-desc">متجر إلكتروني متخصص في بيع أحدث المنتجات بأفضل الأسعار وجودة عالية.</p>
                     <div class="social-links">
                         <a href="#"><i class="fab fa-facebook-f"></i></a>
                         <a href="#"><i class="fab fa-twitter"></i></a>
@@ -2046,27 +2047,27 @@
                 </div>
                 
                 <div class="footer-section">
-                    <h3>روابط سريعة</h3>
+                    <h3 id="footer-quick-title">روابط سريعة</h3>
                     <ul>
-                        <li><a href="#" data-page="home"><i class="fas fa-angle-left"></i> الرئيسية</a></li>
-                        <li><a href="#" data-page="products"><i class="fas fa-angle-left"></i> المنتجات</a></li>
-                        <li><a href="#" data-page="about"><i class="fas fa-angle-left"></i> من نحن</a></li>
-                        <li><a href="#" data-page="contact"><i class="fas fa-angle-left"></i> اتصل بنا</a></li>
+                        <li><a href="#" data-page="home" id="footer-home-link"><i class="fas fa-angle-left"></i> الرئيسية</a></li>
+                        <li><a href="#" data-page="products" id="footer-products-link"><i class="fas fa-angle-left"></i> المنتجات</a></li>
+                        <li><a href="#" data-page="about" id="footer-about-link"><i class="fas fa-angle-left"></i> من نحن</a></li>
+                        <li><a href="#" data-page="contact" id="footer-contact-link"><i class="fas fa-angle-left"></i> اتصل بنا</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-section">
-                    <h3>خدماتنا</h3>
+                    <h3 id="footer-services-title">خدماتنا</h3>
                     <ul>
-                        <li><a href="#"><i class="fas fa-angle-left"></i> الشحن والتوصيل</a></li>
-                        <li><a href="#"><i class="fas fa-angle-left"></i> الإرجاع والاستبدال</a></li>
-                        <li><a href="#"><i class="fas fa-angle-left"></i> الدفع الآمن</a></li>
-                        <li><a href="#"><i class="fas fa-angle-left"></i> الدعم الفني</a></li>
+                        <li><a href="#" id="footer-shipping-link"><i class="fas fa-angle-left"></i> الشحن والتوصيل</a></li>
+                        <li><a href="#" id="footer-return-link"><i class="fas fa-angle-left"></i> الإرجاع والاستبدال</a></li>
+                        <li><a href="#" id="footer-payment-link"><i class="fas fa-angle-left"></i> الدفع الآمن</a></li>
+                        <li><a href="#" id="footer-support-link"><i class="fas fa-angle-left"></i> الدعم الفني</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-section">
-                    <h3>معلومات الاتصال</h3>
+                    <h3 id="footer-contact-title">معلومات الاتصال</h3>
                     <div class="footer-contact">
                         <i class="fas fa-map-marker-alt"></i>
                         <span>الرياض، المملكة العربية السعودية</span>
@@ -2083,7 +2084,7 @@
             </div>
             
             <div class="copyright">
-                <p>جميع الحقوق محفوظة &copy; 2023 متجر إلكتروني</p>
+                <p id="footer-copyright">جميع الحقوق محفوظة &copy; 2023 متجر إلكتروني</p>
             </div>
         </div>
     </footer>
@@ -2151,7 +2152,23 @@
                 noProducts: 'لا توجد منتجات متاحة حالياً',
                 noOrders: 'لا توجد طلبات بعد',
                 cartEmpty: 'سلتك فارغة',
-                total: 'المجموع'
+                total: 'المجموع',
+                
+                // Footer
+                footerAboutTitle: 'عن المتجر',
+                footerAboutDesc: 'متجر إلكتروني متخصص في بيع أحدث المنتجات بأفضل الأسعار وجودة عالية.',
+                footerQuickTitle: 'روابط سريعة',
+                footerServicesTitle: 'خدماتنا',
+                footerContactTitle: 'معلومات الاتصال',
+                footerHomeLink: 'الرئيسية',
+                footerProductsLink: 'المنتجات',
+                footerAboutLink: 'من نحن',
+                footerContactLink: 'اتصل بنا',
+                footerShippingLink: 'الشحن والتوصيل',
+                footerReturnLink: 'الإرجاع والاستبدال',
+                footerPaymentLink: 'الدفع الآمن',
+                footerSupportLink: 'الدعم الفني',
+                footerCopyright: 'جميع الحقوق محفوظة &copy; 2023 متجر إلكتروني'
             },
             en: {
                 // Navigation
@@ -2208,7 +2225,23 @@
                 noProducts: 'No products available currently',
                 noOrders: 'No orders yet',
                 cartEmpty: 'Your cart is empty',
-                total: 'Total'
+                total: 'Total',
+                
+                // Footer
+                footerAboutTitle: 'About Store',
+                footerAboutDesc: 'An e-commerce store specializing in selling the latest products at the best prices and high quality.',
+                footerQuickTitle: 'Quick Links',
+                footerServicesTitle: 'Our Services',
+                footerContactTitle: 'Contact Information',
+                footerHomeLink: 'Home',
+                footerProductsLink: 'Products',
+                footerAboutLink: 'About Us',
+                footerContactLink: 'Contact Us',
+                footerShippingLink: 'Shipping & Delivery',
+                footerReturnLink: 'Returns & Exchanges',
+                footerPaymentLink: 'Secure Payment',
+                footerSupportLink: 'Technical Support',
+                footerCopyright: 'All rights reserved &copy; 2023 E-Commerce Store'
             }
         };
 
@@ -2701,6 +2734,51 @@
                     quantityInput.value = quantity;
                 });
             });
+            
+            // Search functionality
+            const searchButton = document.getElementById('search-button');
+            const searchInput = document.getElementById('search-input');
+            
+            if (searchButton) {
+                searchButton.addEventListener('click', handleSearch);
+            }
+            
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        handleSearch();
+                    }
+                });
+            }
+        }
+
+        // Handle search functionality
+        function handleSearch() {
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            
+            if (searchTerm === '') {
+                // If search term is empty, show all products
+                fetchProducts(currentCategory);
+                return;
+            }
+            
+            // Filter products based on search term
+            const filteredProducts = products.filter(product => {
+                const nameAr = product.name_ar ? product.name_ar.toLowerCase() : '';
+                const nameEn = product.name_en ? product.name_en.toLowerCase() : '';
+                const descriptionAr = product.description_ar ? product.description_ar.toLowerCase() : '';
+                const descriptionEn = product.description_en ? product.description_en.toLowerCase() : '';
+                
+                return (
+                    nameAr.includes(searchTerm) ||
+                    nameEn.includes(searchTerm) ||
+                    descriptionAr.includes(searchTerm) ||
+                    descriptionEn.includes(searchTerm)
+                );
+            });
+            
+            // Render the filtered products
+            renderProducts(filteredProducts);
         }
 
         // Navigate to page
@@ -3206,6 +3284,22 @@
                     addToCartBtn.innerHTML = `<i class="fas fa-shopping-cart"></i> ${t.addToCartDetails}`;
                 }
             }
+            
+            // Update footer
+            document.getElementById('footer-about-title').textContent = t.footerAboutTitle;
+            document.getElementById('footer-about-desc').textContent = t.footerAboutDesc;
+            document.getElementById('footer-quick-title').textContent = t.footerQuickTitle;
+            document.getElementById('footer-services-title').textContent = t.footerServicesTitle;
+            document.getElementById('footer-contact-title').textContent = t.footerContactTitle;
+            document.getElementById('footer-home-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerHomeLink}`;
+            document.getElementById('footer-products-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerProductsLink}`;
+            document.getElementById('footer-about-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerAboutLink}`;
+            document.getElementById('footer-contact-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerContactLink}`;
+            document.getElementById('footer-shipping-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerShippingLink}`;
+            document.getElementById('footer-return-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerReturnLink}`;
+            document.getElementById('footer-payment-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerPaymentLink}`;
+            document.getElementById('footer-support-link').innerHTML = `<i class="fas fa-angle-left"></i> ${t.footerSupportLink}`;
+            document.getElementById('footer-copyright').textContent = t.footerCopyright;
         }
     </script>
 </body>
