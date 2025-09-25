@@ -3477,6 +3477,7 @@
 // Handle checkout form submission - UPDATED VERSION
 
     // Handle checkout form submission - NO TRIGGERS VERSION
+// Handle checkout form submission - NEW TABLE VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3545,30 +3546,30 @@ async function handleCheckout(e) {
         // Get the order ID
         const orderId = orderDataResult[0].id;
         
-        // Create order items using a custom RPC function that bypasses triggers
+        // Try to create order items using the simple table
         try {
-            // Prepare items for the custom function
+            // Prepare items for the function
             const itemsForFunction = cart.map(item => ({
                 product_id: item.id,
+                product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
                 quantity: item.quantity,
-                unit_price: item.price,
-                product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                unit_price: item.price
             }));
             
-            // Try to create order items using the custom function
-            const { data: itemsData, error: itemsError } = await supabase.rpc('create_order_items_simple', {
+            // Use the function to insert order items into the simple table
+            const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_simple', {
                 p_order_id: orderId,
-                p_items: JSON.stringify(itemsForFunction)
+                p_items: itemsForFunction
             });
             
             if (itemsError) {
-                console.error('Error creating order items with RPC:', itemsError);
+                console.error('Error creating order items with simple table:', itemsError);
                 throw itemsError;
             }
             
-            console.log('Order items created successfully:', itemsData);
+            console.log('Order items created successfully with simple table:', itemsData);
         } catch (itemsError) {
-            console.error('Failed to create order items with RPC:', itemsError);
+            console.error('Failed to create order items with simple table:', itemsError);
             
             // Fallback: Store order items in local storage for later processing
             const pendingOrderItems = {
@@ -3646,7 +3647,6 @@ async function handleCheckout(e) {
         showNotification(errorMessage, 'error');
     }
 }
-
 // Function to create the database function if it doesn't exist
 async function createOrderItemsFunction() {
     try {
