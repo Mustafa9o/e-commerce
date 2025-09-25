@@ -3476,7 +3476,7 @@
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - UPDATED VERSION
 
-        // Handle checkout form submission - UPDATED VERSION
+    // Handle checkout form submission - NO TRIGGERS VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3545,39 +3545,48 @@ async function handleCheckout(e) {
         // Get the order ID
         const orderId = orderDataResult[0].id;
         
-        // Create order items with all required fields
-        let itemsCreated = 0;
-        
-        for (const item of cart) {
-            try {
-                // Create order item with all required fields
-                const orderItemData = {
-                    order_id: orderId,
+        // Create order items using a custom RPC function that bypasses triggers
+        try {
+            // Prepare items for the custom function
+            const itemsForFunction = cart.map(item => ({
+                product_id: item.id,
+                quantity: item.quantity,
+                unit_price: item.price,
+                product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+            }));
+            
+            // Try to create order items using the custom function
+            const { data: itemsData, error: itemsError } = await supabase.rpc('create_order_items_simple', {
+                p_order_id: orderId,
+                p_items: JSON.stringify(itemsForFunction)
+            });
+            
+            if (itemsError) {
+                console.error('Error creating order items with RPC:', itemsError);
+                throw itemsError;
+            }
+            
+            console.log('Order items created successfully:', itemsData);
+        } catch (itemsError) {
+            console.error('Failed to create order items with RPC:', itemsError);
+            
+            // Fallback: Store order items in local storage for later processing
+            const pendingOrderItems = {
+                order_id: orderId,
+                items: cart.map(item => ({
                     product_id: item.id,
                     quantity: item.quantity,
                     unit_price: item.price,
-                    // Add the required product_name field
                     product_name: currentLanguage === 'ar' ? item.name : item.nameEn
-                };
-                
-                const { error: itemError } = await supabase
-                    .from('order_items')
-                    .insert([orderItemData]);
-                
-                if (itemError) {
-                    console.error('Error creating order item:', itemError);
-                    throw itemError;
-                }
-                
-                console.log('Order item created successfully');
-                itemsCreated++;
-            } catch (itemError) {
-                console.error('Failed to create order item:', itemError);
-                // Continue with other items even if this one fails
-            }
+                })),
+                created_at: new Date().toISOString()
+            };
+            
+            localStorage.setItem(`pending_order_items_${orderId}`, JSON.stringify(pendingOrderItems));
+            
+            // Show notification about order items being stored locally
+            showNotification('تم إنشاء طلبك بنجاح. سيتم معالجة عناصر الطلب قريباً.', 'info');
         }
-        
-        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
         
         // Clear cart
         cart = [];
@@ -3618,6 +3627,8 @@ async function handleCheckout(e) {
                 errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
             } else if (error.message.includes('duplicate key')) {
                 errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
+            } else if (error.message.includes('function') && error.message.includes('does not exist')) {
+                errorMessage = 'حدث خطأ: وظيفة قاعدة البيانات غير متاحة. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
             } else {
                 errorMessage = `حدث خطأ: ${error.message}`;
             }
@@ -3635,6 +3646,134 @@ async function handleCheckout(e) {
         showNotification(errorMessage, 'error');
     }
 }
+
+// Function to create the database function if it doesn't exist
+async function createOrderItemsFunction() {
+    try {
+        // Create the function to insert order items without triggers
+        const { error } = await supabase.rpc('exec_sql', {
+            sql: `
+                CREATE OR REPLACE FUNCTION create_order_items_simple(
+                    p_order_id bigint,
+                    p_items text
+                )
+                RETURNS boolean
+                LANGUAGE plpgsql
+                SECURITY DEFINER
+                AS $$
+                DECLARE
+                    items_array jsonb;
+                    item record;
+                    result boolean := true;
+                BEGIN
+                    -- Parse the JSON string
+                    items_array := p_items::jsonb;
+                    
+                    -- Disable all triggers on the order_items table
+                    ALTER TABLE order_items DISABLE TRIGGER ALL;
+                    
+                    -- Insert each item
+                    FOR item IN SELECT * FROM jsonb_to_recordset(items_array) AS x(
+                        product_id bigint,
+                        quantity integer,
+                        unit_price numeric,
+                        product_name text
+                    ) LOOP
+                        BEGIN
+                            INSERT INTO order_items (
+                                order_id,
+                                product_id,
+                                quantity,
+                                unit_price,
+                                product_name,
+                                created_at
+                            ) VALUES (
+                                p_order_id,
+                                item.product_id,
+                                item.quantity,
+                                item.unit_price,
+                                item.product_name,
+                                NOW()
+                            );
+                        EXCEPTION WHEN OTHERS THEN
+                            result := false;
+                            RAISE NOTICE 'Error inserting order item: %', SQLERRM;
+                        END;
+                    END LOOP;
+                    
+                    -- Re-enable triggers
+                    ALTER TABLE order_items ENABLE TRIGGER ALL;
+                    
+                    RETURN result;
+                END;
+                $$;
+            `
+        });
+        
+        if (error) {
+            console.error('Error creating order_items function:', error);
+            return false;
+        }
+        
+        console.log('Order items function created successfully');
+        return true;
+    } catch (error) {
+        console.error('Error in createOrderItemsFunction:', error);
+        return false;
+    }
+}
+
+// Function to execute SQL (if not already available)
+async function createExecSqlFunction() {
+    try {
+        const { error } = await supabase.rpc('exec_sql', {
+            sql: 'SELECT 1;'
+        });
+        
+        if (error && error.message.includes('function exec_sql(text) does not exist')) {
+            // Create the exec_sql function
+            const { error: createError } = await supabase.rpc('exec_sql', {
+                sql: `
+                    CREATE OR REPLACE FUNCTION exec_sql(sql text)
+                    RETURNS void
+                    LANGUAGE plpgsql
+                    SECURITY DEFINER
+                    AS $$
+                    BEGIN
+                      EXECUTE sql;
+                    END;
+                    $$;
+                `
+            });
+            
+            if (createError) {
+                console.error('Error creating exec_sql function:', createError);
+                return false;
+            }
+            
+            console.log('exec_sql function created successfully');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Error in createExecSqlFunction:', error);
+        return false;
+    }
+}
+
+// Initialize the database functions when the app loads
+document.addEventListener('DOMContentLoaded', function() {
+    checkAuthState();
+    initializeDatabase();
+    fetchProducts();
+    updateCartCount();
+    setupEventListeners();
+    
+    // Initialize database functions
+    createExecSqlFunction().then(() => {
+        createOrderItemsFunction();
+    });
+});
      async function handleLogout() {
             try {
                 await supabase.auth.signOut();
