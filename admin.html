@@ -2847,252 +2847,271 @@
         }
 
         // View order - FIXED VERSION
-        async function viewOrder(orderId) {
-            try {
-                console.log("Loading order details for ID:", orderId);
-                
-                // Show loading indicator
-                const orderInfo = document.getElementById('order-info');
-                const orderItemsTbody = document.getElementById('order-items-tbody');
-                const orderTotalAmount = document.getElementById('order-total-amount');
-                
-                if (orderInfo) orderInfo.innerHTML = '<div class="spinner"></div>';
-                if (orderItemsTbody) orderItemsTbody.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>';
-                if (orderTotalAmount) orderTotalAmount.textContent = '0';
-                
-                // Get order details
-                const { data: order, error: orderError } = await supabase
-                    .from('orders')
-                    .select('*')
-                    .eq('id', orderId)
-                    .single();
-                
-                if (orderError) throw orderError;
-                
-                console.log("Order data:", order);
-                
-                // Get customer details
-                const { data: customer, error: customerError } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', order.user_id)
-                    .single();
-                
-                if (customerError) throw customerError;
-                
-                console.log("Customer data:", customer);
-                
-                // Check if order_items table exists and fetch order items
-                let orderItems = [];
+        // View order - UPDATED VERSION
+async function viewOrder(orderId) {
+    try {
+        console.log("Loading order details for ID:", orderId);
+        
+        // Show loading indicator
+        const orderInfo = document.getElementById('order-info');
+        const orderItemsTbody = document.getElementById('order-items-tbody');
+        const orderTotalAmount = document.getElementById('order-total-amount');
+        
+        if (orderInfo) orderInfo.innerHTML = '<div class="spinner"></div>';
+        if (orderItemsTbody) orderItemsTbody.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>';
+        if (orderTotalAmount) orderTotalAmount.textContent = '0';
+        
+        // Get order details
+        const { data: order, error: orderError } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderId)
+            .single();
+        
+        if (orderError) throw orderError;
+        
+        console.log("Order data:", order);
+        
+        // Get customer details
+        const { data: customer, error: customerError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', order.user_id)
+            .single();
+        
+        if (customerError) throw customerError;
+        
+        console.log("Customer data:", customer);
+        
+        // Try to get order items from the order_items table
+        let orderItems = [];
+        try {
+            const { data: items, error: itemsError } = await supabase
+                .from('order_items')
+                .select(`
+                    *,
+                    products:product_id (id, name_ar, name_en, image_url)
+                `)
+                .eq('order_id', orderId);
+            
+            if (itemsError) {
+                console.log("Error fetching order_items:", itemsError.message);
+                // If order_items table doesn't exist or there's an error, try the backup table
                 try {
-                    const { data: items, error: itemsError } = await supabase
-                        .from('order_items')
-                        .select('*')
+                    const { data: backupItems, error: backupError } = await supabase
+                        .from('order_items_backup')
+                        .select(`
+                            *,
+                            products:product_id (id, name_ar, name_en, image_url)
+                        `)
                         .eq('order_id', orderId);
                     
-                    if (itemsError) {
-                        console.log("Error fetching order_items, trying alternative approach:", itemsError.message);
-                        // If order_items table doesn't exist or there's an error, we'll create a fallback
+                    if (backupError) {
+                        console.log("Error fetching order_items_backup:", backupError.message);
+                        // If both tables fail, create fallback items
                         orderItems = [];
                     } else {
-                        orderItems = items || [];
-                        console.log("Order items data:", orderItems);
+                        orderItems = backupItems || [];
+                        console.log("Order items from backup table:", orderItems);
                     }
-                } catch (error) {
-                    console.log("Exception when fetching order_items:", error.message);
+                } catch (backupError) {
+                    console.log("Exception when fetching order_items_backup:", backupError.message);
                     orderItems = [];
                 }
-                
-                // If we don't have order items, create a fallback from the order data
-                if (orderItems.length === 0) {
-                    console.log("No order items found, creating fallback from order data");
+            } else {
+                orderItems = items || [];
+                console.log("Order items data:", orderItems);
+            }
+        } catch (error) {
+            console.log("Exception when fetching order_items:", error.message);
+            orderItems = [];
+        }
+        
+        // If we don't have order items, check for pending order items in local storage
+        if (orderItems.length === 0) {
+            console.log("No order items found in database, checking local storage");
+            
+            // Check if there are pending order items in local storage
+            const pendingOrderItemsKey = `pending_order_items_${orderId}`;
+            const pendingOrderItemsJson = localStorage.getItem(pendingOrderItemsKey);
+            
+            if (pendingOrderItemsJson) {
+                try {
+                    const pendingOrderItems = JSON.parse(pendingOrderItemsJson);
                     
-                    // Create a fallback item based on the order total
-                    orderItems = [{
-                        id: 'fallback',
-                        order_id: orderId,
-                        product_id: null,
-                        quantity: 1,
-                        unit_price: order.total || 0,
-                        products: {
-                            name_ar: 'طلب عام',
-                            name_en: 'General Order',
-                            image_url: null
-                        }
-                    }];
-                }
-                
-                // Update modal title
-                const orderDetailsTitle = document.getElementById('order-details-title');
-                if (orderDetailsTitle) {
-                    orderDetailsTitle.textContent = `${translations[currentLanguage].orderDetails} #${order.order_number || order.id}`;
-                }
-                
-                // Populate order info
-                if (orderInfo) {
-                    // Extract shipping address from JSON if available
-                    let shippingAddress = 'N/A';
-                    if (order.shipping_address) {
-                        try {
-                            if (typeof order.shipping_address === 'string') {
-                                const addr = JSON.parse(order.shipping_address);
-                                shippingAddress = `${addr.address || ''}, ${addr.city || ''}, ${addr.postal_code || ''}`.replace(/^, |, $/g, '');
-                            } else if (typeof order.shipping_address === 'object') {
-                                shippingAddress = `${order.shipping_address.address || ''}, ${order.shipping_address.city || ''}, ${order.shipping_address.postal_code || ''}`.replace(/^, |, $/g, '');
+                    if (pendingOrderItems.items && pendingOrderItems.items.length > 0) {
+                        // Convert pending items to the same format as order items
+                        orderItems = pendingOrderItems.items.map(item => ({
+                            id: `pending_${item.product_id}`,
+                            order_id: orderId,
+                            product_id: item.product_id,
+                            product_name: item.product_name,
+                            quantity: item.quantity,
+                            unit_price: item.unit_price,
+                            products: {
+                                id: item.product_id,
+                                name_ar: item.product_name,
+                                name_en: item.product_name,
+                                image_url: null
                             }
-                        } catch (e) {
-                            console.error("Error parsing shipping address:", e);
-                            shippingAddress = 'N/A';
-                        }
-                    } else if (order.delivery_address) {
-                        shippingAddress = order.delivery_address;
+                        }));
+                        
+                        console.log("Order items from local storage:", orderItems);
                     }
+                } catch (e) {
+                    console.error("Error parsing pending order items:", e);
+                }
+            }
+        }
+        
+        // If we still don't have order items, create a fallback from the order data
+        if (orderItems.length === 0) {
+            console.log("No order items found anywhere, creating fallback from order data");
+            
+            // Create a fallback item based on the order total
+            orderItems = [{
+                id: 'fallback',
+                order_id: orderId,
+                product_id: null,
+                product_name: currentLanguage === 'ar' ? 'طلب عام' : 'General Order',
+                quantity: 1,
+                unit_price: order.total || 0,
+                products: {
+                    id: null,
+                    name_ar: 'طلب عام',
+                    name_en: 'General Order',
+                    image_url: null
+                }
+            }];
+        }
+        
+        // Update modal title
+        const orderDetailsTitle = document.getElementById('order-details-title');
+        if (orderDetailsTitle) {
+            orderDetailsTitle.textContent = `${translations[currentLanguage].orderDetails} #${order.order_number || order.id}`;
+        }
+        
+        // Populate order info
+        if (orderInfo) {
+            // Extract shipping address from JSON if available
+            let shippingAddress = 'N/A';
+            if (order.shipping_address) {
+                try {
+                    if (typeof order.shipping_address === 'string') {
+                        const addr = JSON.parse(order.shipping_address);
+                        shippingAddress = `${addr.address || ''}, ${addr.city || ''}, ${addr.postal_code || ''}`.replace(/^, |, $/g, '');
+                    } else if (typeof order.shipping_address === 'object') {
+                        shippingAddress = `${order.shipping_address.address || ''}, ${order.shipping_address.city || ''}, ${order.shipping_address.postal_code || ''}`.replace(/^, |, $/g, '');
+                    }
+                } catch (e) {
+                    console.error("Error parsing shipping address:", e);
+                    shippingAddress = 'N/A';
+                }
+            } else if (order.delivery_address) {
+                shippingAddress = order.delivery_address;
+            }
+            
+            orderInfo.innerHTML = `
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].orderNumber}</h4>
+                    <p>#${order.order_number || order.id}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].orderDate}</h4>
+                    <p>${formatDate(order.created_at)}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].orderStatus}</h4>
+                    <p><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].customerName}</h4>
+                    <p>${customer.full_name || 'Unknown'}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].customerEmail}</h4>
+                    <p>${customer.email || 'N/A'}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].customerPhone}</h4>
+                    <p>${customer.phone || 'N/A'}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].shippingAddress}</h4>
+                    <p>${shippingAddress}</p>
+                </div>
+                <div class="order-info-item">
+                    <h4>${translations[currentLanguage].paymentMethod}</h4>
+                    <p>${order.payment_method || 'N/A'}</p>
+                </div>
+            `;
+        }
+        
+        // Populate order items
+        if (orderItemsTbody) {
+            orderItemsTbody.innerHTML = '';
+            
+            let total = 0;
+            
+            if (orderItems && orderItems.length > 0) {
+                orderItems.forEach(item => {
+                    // Get product name from either the product_name field or the products relation
+                    const productName = currentLanguage === 'ar' 
+                        ? (item.product_name || item.products?.name_ar || 'منتج غير معروف')
+                        : (item.product_name || item.products?.name_en || 'Unknown Product');
                     
-                    orderInfo.innerHTML = `
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].orderNumber}</h4>
-                            <p>#${order.order_number || order.id}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].orderDate}</h4>
-                            <p>${formatDate(order.created_at)}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].orderStatus}</h4>
-                            <p><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].customerName}</h4>
-                            <p>${customer.full_name || 'Unknown'}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].customerEmail}</h4>
-                            <p>${customer.email || 'N/A'}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].customerPhone}</h4>
-                            <p>${customer.phone || 'N/A'}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].shippingAddress}</h4>
-                            <p>${shippingAddress}</p>
-                        </div>
-                        <div class="order-info-item">
-                            <h4>${translations[currentLanguage].paymentMethod}</h4>
-                            <p>${order.payment_method || 'N/A'}</p>
-                        </div>
+                    const itemPrice = item.unit_price || 0;
+                    const itemQuantity = item.quantity || 1;
+                    const itemTotal = itemPrice * itemQuantity;
+                    total += itemTotal;
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div style="display: flex; align-items: center;">
+                                ${item.products?.image_url 
+                                    ? `<img src="${item.products.image_url}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;">` 
+                                    : ''}
+                                <span>${productName}</span>
+                            </div>
+                        </td>
+                        <td>${itemPrice.toFixed(2)} ر.س</td>
+                        <td>${itemQuantity}</td>
+                        <td>${itemTotal.toFixed(2)} ر.س</td>
                     `;
-                }
-                
-                // Populate order items
-                if (orderItemsTbody) {
-                    orderItemsTbody.innerHTML = '';
-                    
-                    let total = 0;
-                    
-                    if (orderItems && orderItems.length > 0) {
-                        orderItems.forEach(item => {
-                            const productName = currentLanguage === 'ar' 
-                                ? (item.products?.name_ar || 'منتج غير معروف')
-                                : (item.products?.name_en || 'Unknown Product');
-                            
-                            const itemPrice = item.unit_price || 0;
-                            const itemQuantity = item.quantity || 1;
-                            const itemTotal = itemPrice * itemQuantity;
-                            total += itemTotal;
-                            
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>
-                                    <div style="display: flex; align-items: center;">
-                                        ${item.products?.image_url 
-                                            ? `<img src="${item.products.image_url}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;">` 
-                                            : ''}
-                                        <span>${productName}</span>
-                                    </div>
-                                </td>
-                                <td>${itemPrice.toFixed(2)} ر.س</td>
-                                <td>${itemQuantity}</td>
-                                <td>${itemTotal.toFixed(2)} ر.س</td>
-                            `;
-                            orderItemsTbody.appendChild(row);
-                        });
-                    } else {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `<td colspan="4" class="text-center">${currentLanguage === 'ar' ? 'لا توجد عناصر' : 'No items found'}</td>`;
-                        orderItemsTbody.appendChild(row);
-                    }
-                    
-                    if (orderTotalAmount) {
-                        orderTotalAmount.textContent = total.toFixed(2);
-                    }
-                }
-                
-                // Show modal
-                const orderDetailsModal = document.getElementById('order-details-modal');
-                if (orderDetailsModal) {
-                    orderDetailsModal.style.display = 'flex';
-                    console.log("Modal should be visible now");
-                }
-                
-                // Show success notification
-                showNotification(translations[currentLanguage].orderDetailsLoaded, 'success');
-            } catch (error) {
-                console.error('Error viewing order:', error.message);
-                showNotification(translations[currentLanguage].error, 'error');
-                
-                // Show error in modal
-                const orderInfo = document.getElementById('order-info');
-                if (orderInfo) {
-                    orderInfo.innerHTML = `<div class="text-center" style="color: red;">${translations[currentLanguage].error}: ${error.message}</div>`;
-                }
+                    orderItemsTbody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4" class="text-center">${currentLanguage === 'ar' ? 'لا توجد عناصر' : 'No items found'}</td>`;
+                orderItemsTbody.appendChild(row);
+            }
+            
+            if (orderTotalAmount) {
+                orderTotalAmount.textContent = total.toFixed(2);
             }
         }
-
-        // Update order status
-        function updateOrderStatus(orderId) {
-            const order = orders.find(o => o.id === parseInt(orderId));
-            if (!order) return;
-            
-            // Populate form
-            document.getElementById('order-id').value = order.id;
-            document.getElementById('order-status').value = order.status;
-            
-            // Show modal
-            document.getElementById('order-status-modal').style.display = 'flex';
+        
+        // Show modal
+        const orderDetailsModal = document.getElementById('order-details-modal');
+        if (orderDetailsModal) {
+            orderDetailsModal.style.display = 'flex';
+            console.log("Modal should be visible now");
         }
-
-        // Handle order status update
-        async function handleOrderStatusUpdate(e) {
-            e.preventDefault();
-            
-            const orderId = document.getElementById('order-id').value;
-            const status = document.getElementById('order-status').value;
-            
-            try {
-                const { data, error } = await supabase
-                    .from('orders')
-                    .update({
-                        status: status
-                    })
-                    .eq('id', orderId)
-                    .select();
-                
-                if (error) throw error;
-                
-                showNotification(translations[currentLanguage].orderUpdated, 'success');
-                
-                // Close modal
-                document.getElementById('order-status-modal').style.display = 'none';
-                
-                // Refresh orders
-                loadOrders();
-            } catch (error) {
-                console.error('Error updating order status:', error.message);
-                showNotification(translations[currentLanguage].error, 'error');
-            }
+        
+        // Show success notification
+        showNotification(translations[currentLanguage].orderDetailsLoaded, 'success');
+    } catch (error) {
+        console.error('Error viewing order:', error.message);
+        showNotification(translations[currentLanguage].error, 'error');
+        
+        // Show error in modal
+        const orderInfo = document.getElementById('order-info');
+        if (orderInfo) {
+            orderInfo.innerHTML = `<div class="text-center" style="color: red;">${translations[currentLanguage].error}: ${error.message}</div>`;
         }
-
+    }
+}
         // View customer
         function viewCustomer(customerId) {
             // For simplicity, we'll just show a notification
