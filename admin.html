@@ -564,7 +564,7 @@
             background-color: white;
             border-radius: var(--border-radius);
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             max-height: 90vh;
             overflow-y: auto;
             padding: 30px;
@@ -797,6 +797,7 @@
             
             .modal-content {
                 padding: 20px;
+                max-width: 95%;
             }
             
             .page-title {
@@ -883,6 +884,10 @@
             
             .admin-tab {
                 text-align: center;
+            }
+            
+            .order-info {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1479,7 +1484,7 @@
     <div class="modal" id="order-details-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>تفاصيل الطلب</h2>
+                <h2 id="order-details-title">تفاصيل الطلب</h2>
                 <button class="close-modal">&times;</button>
             </div>
             <div class="order-details">
@@ -1560,6 +1565,7 @@
                 confirmDelete: 'هل أنت متأكد من أنك تريد الحذف؟',
                 error: 'حدث خطأ',
                 loading: 'جاري التحميل...',
+                orderDetailsLoaded: 'تم تحميل تفاصيل الطلب بنجاح',
                 
                 // Dashboard
                 totalProducts: 'إجمالي المنتجات',
@@ -1673,6 +1679,7 @@
                 confirmDelete: 'Are you sure you want to delete?',
                 error: 'An error occurred',
                 loading: 'Loading...',
+                orderDetailsLoaded: 'Order details loaded successfully',
                 
                 // Dashboard
                 totalProducts: 'Total Products',
@@ -2843,9 +2850,20 @@
             }
         }
 
-        // View order
+        // View order - FIXED VERSION
         async function viewOrder(orderId) {
             try {
+                console.log("Loading order details for ID:", orderId);
+                
+                // Show loading indicator
+                const orderInfo = document.getElementById('order-info');
+                const orderItemsTbody = document.getElementById('order-items-tbody');
+                const orderTotalAmount = document.getElementById('order-total-amount');
+                
+                if (orderInfo) orderInfo.innerHTML = '<div class="spinner"></div>';
+                if (orderItemsTbody) orderItemsTbody.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>';
+                if (orderTotalAmount) orderTotalAmount.textContent = '0';
+                
                 // Get order details
                 const { data: order, error: orderError } = await supabase
                     .from('orders')
@@ -2854,6 +2872,8 @@
                     .single();
                 
                 if (orderError) throw orderError;
+                
+                console.log("Order data:", order);
                 
                 // Get customer details
                 const { data: customer, error: customerError } = await supabase
@@ -2864,19 +2884,28 @@
                 
                 if (customerError) throw customerError;
                 
+                console.log("Customer data:", customer);
+                
                 // Get order items
                 const { data: orderItems, error: orderItemsError } = await supabase
                     .from('order_items')
                     .select(`
                         *,
-                        products:product_id (name_ar, name_en)
+                        products:product_id (name_ar, name_en, image_url)
                     `)
                     .eq('order_id', orderId);
                 
                 if (orderItemsError) throw orderItemsError;
                 
+                console.log("Order items data:", orderItems);
+                
+                // Update modal title
+                const orderDetailsTitle = document.getElementById('order-details-title');
+                if (orderDetailsTitle) {
+                    orderDetailsTitle.textContent = `${translations[currentLanguage].orderDetails} #${order.order_number || order.id}`;
+                }
+                
                 // Populate order info
-                const orderInfo = document.getElementById('order-info');
                 if (orderInfo) {
                     orderInfo.innerHTML = `
                         <div class="order-info-item">
@@ -2915,31 +2944,41 @@
                 }
                 
                 // Populate order items
-                const orderItemsTbody = document.getElementById('order-items-tbody');
-                const orderTotalAmount = document.getElementById('order-total-amount');
-                
                 if (orderItemsTbody) {
                     orderItemsTbody.innerHTML = '';
                     
                     let total = 0;
                     
-                    orderItems.forEach(item => {
-                        const productName = currentLanguage === 'ar' 
-                            ? item.products?.name_ar || 'Unknown' 
-                            : item.products?.name_en || 'Unknown';
-                        
-                        const itemTotal = item.unit_price * item.quantity;
-                        total += itemTotal;
-                        
+                    if (orderItems && orderItems.length > 0) {
+                        orderItems.forEach(item => {
+                            const productName = currentLanguage === 'ar' 
+                                ? item.products?.name_ar || 'Unknown' 
+                                : item.products?.name_en || 'Unknown';
+                            
+                            const itemTotal = item.unit_price * item.quantity;
+                            total += itemTotal;
+                            
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>
+                                    <div style="display: flex; align-items: center;">
+                                        ${item.products?.image_url 
+                                            ? `<img src="${item.products.image_url}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;">` 
+                                            : ''}
+                                        <span>${productName}</span>
+                                    </div>
+                                </td>
+                                <td>${item.unit_price} ر.س</td>
+                                <td>${item.quantity}</td>
+                                <td>${itemTotal.toFixed(2)} ر.س</td>
+                            `;
+                            orderItemsTbody.appendChild(row);
+                        });
+                    } else {
                         const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${productName}</td>
-                            <td>${item.unit_price} ر.س</td>
-                            <td>${item.quantity}</td>
-                            <td>${itemTotal.toFixed(2)} ر.س</td>
-                        `;
+                        row.innerHTML = `<td colspan="4" class="text-center">${currentLanguage === 'ar' ? 'لا توجد عناصر' : 'No items found'}</td>`;
                         orderItemsTbody.appendChild(row);
-                    });
+                    }
                     
                     if (orderTotalAmount) {
                         orderTotalAmount.textContent = total.toFixed(2);
@@ -2947,10 +2986,23 @@
                 }
                 
                 // Show modal
-                document.getElementById('order-details-modal').style.display = 'flex';
+                const orderDetailsModal = document.getElementById('order-details-modal');
+                if (orderDetailsModal) {
+                    orderDetailsModal.style.display = 'flex';
+                    console.log("Modal should be visible now");
+                }
+                
+                // Show success notification
+                showNotification(translations[currentLanguage].orderDetailsLoaded, 'success');
             } catch (error) {
                 console.error('Error viewing order:', error.message);
                 showNotification(translations[currentLanguage].error, 'error');
+                
+                // Show error in modal
+                const orderInfo = document.getElementById('order-info');
+                if (orderInfo) {
+                    orderInfo.innerHTML = `<div class="text-center" style="color: red;">${translations[currentLanguage].error}: ${error.message}</div>`;
+                }
             }
         }
 
