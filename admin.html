@@ -2214,7 +2214,7 @@
             });
         }
 
-        // Load customers
+        // Load customers - FIXED VERSION
         async function loadCustomers() {
             try {
                 const { data, error } = await supabase
@@ -2226,11 +2226,11 @@
                 
                 customers = data || [];
                 
-                // جلب عدد الطلبات لكل عميل
+                // جلب عدد الطلبات لكل عميل - Fixed query
                 const customerIds = customers.map(customer => customer.id);
                 const { data: ordersCount, error: ordersCountError } = await supabase
                     .from('orders')
-                    .select('user_id, count', { count: 'exact' })
+                    .select('user_id')
                     .in('user_id', customerIds);
                 
                 if (ordersCountError) throw ordersCountError;
@@ -2238,7 +2238,10 @@
                 // إنشاء خريطة لعدد الطلبات لكل عميل
                 const ordersCountMap = {};
                 ordersCount.forEach(order => {
-                    ordersCountMap[order.user_id] = order.count;
+                    if (!ordersCountMap[order.user_id]) {
+                        ordersCountMap[order.user_id] = 0;
+                    }
+                    ordersCountMap[order.user_id]++;
                 });
                 
                 // إضافة عدد الطلبات لبيانات العملاء
