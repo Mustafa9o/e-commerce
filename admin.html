@@ -8,7 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Existing CSS styles remain the same */
+        /* All existing CSS remains the same */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2c3e50;
@@ -2386,37 +2386,41 @@
         // Load customers - FIXED VERSION
         async function loadCustomers() {
             try {
-                const { data, error } = await supabase
+                const { data: customersData, error: customersError } = await supabase
                     .from('profiles')
                     .select('*')
                     .neq('role', 'admin');
                 
-                if (error) throw error;
+                if (customersError) throw customersError;
                 
-                customers = data || [];
+                customers = customersData || [];
                 
-                // جلب عدد الطلبات لكل عميل - Fixed query
+                // Get order counts for each customer
                 const customerIds = customers.map(customer => customer.id);
-                const { data: ordersCount, error: ordersCountError } = await supabase
-                    .from('orders')
-                    .select('user_id')
-                    .in('user_id', customerIds);
                 
-                if (ordersCountError) throw ordersCountError;
-                
-                // إنشاء خريطة لعدد الطلبات لكل عميل
-                const ordersCountMap = {};
-                ordersCount.forEach(order => {
-                    if (!ordersCountMap[order.user_id]) {
-                        ordersCountMap[order.user_id] = 0;
-                    }
-                    ordersCountMap[order.user_id]++;
-                });
-                
-                // إضافة عدد الطلبات لبيانات العملاء
-                customers.forEach(customer => {
-                    customer.orders_count = ordersCountMap[customer.id] || 0;
-                });
+                if (customerIds.length > 0) {
+                    // Get all orders for these customers
+                    const { data: ordersData, error: ordersError } = await supabase
+                        .from('orders')
+                        .select('user_id')
+                        .in('user_id', customerIds);
+                    
+                    if (ordersError) throw ordersError;
+                    
+                    // Count orders per customer
+                    const ordersCountMap = {};
+                    ordersData.forEach(order => {
+                        if (!ordersCountMap[order.user_id]) {
+                            ordersCountMap[order.user_id] = 0;
+                        }
+                        ordersCountMap[order.user_id]++;
+                    });
+                    
+                    // Add order counts to customer data
+                    customers.forEach(customer => {
+                        customer.orders_count = ordersCountMap[customer.id] || 0;
+                    });
+                }
                 
                 renderCustomers();
             } catch (error) {
@@ -2847,335 +2851,279 @@
         }
 
         // View order - FIXED VERSION
-        // View order - UPDATED VERSION
-// View order - SIMPLIFIED FOR order_items_backup TABLE
-// View order - DEBUG VERSION
-async function viewOrder(orderId) {
-    try {
-        console.log("Loading order details for ID:", orderId);
-        
-        // Show loading indicator
-        const orderInfo = document.getElementById('order-info');
-        const orderItemsTbody = document.getElementById('order-items-tbody');
-        const orderTotalAmount = document.getElementById('order-total-amount');
-        
-        if (orderInfo) orderInfo.innerHTML = '<div class="spinner"></div>';
-        if (orderItemsTbody) orderItemsTbody.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>';
-        if (orderTotalAmount) orderTotalAmount.textContent = '0';
-        
-        // Get order details
-        const { data: order, error: orderError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('id', orderId)
-            .single();
-        
-        if (orderError) throw orderError;
-        
-        console.log("Order data:", order);
-        
-        // Get customer details
-        const { data: customer, error: customerError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', order.user_id)
-            .single();
-        
-        if (customerError) throw customerError;
-        
-        console.log("Customer data:", customer);
-        
-        // First, let's check if the order_items_backup table exists and has any data
-        try {
-            const { data: tableCheck, error: tableError } = await supabase
-                .from('order_items_backup')
-                .select('*', { count: 'exact', head: true });
-            
-            if (tableError) {
-                console.error("Error checking order_items_backup table:", tableError);
-                console.log("Table might not exist or there's a permission issue");
-            } else {
-                console.log("order_items_backup table exists and has", tableCheck, "rows total");
-            }
-        } catch (error) {
-            console.error("Exception when checking order_items_backup table:", error);
-        }
-        
-        // Now let's check specifically for items for this order
-        let orderItems = [];
-        try {
-            // First try a simple query without joins
-            const { data: simpleItems, error: simpleError } = await supabase
-                .from('order_items_backup')
-                .select('*')
-                .eq('order_id', orderId);
-            
-            if (simpleError) {
-                console.error("Error with simple query:", simpleError);
-            } else {
-                console.log("Simple query result:", simpleItems);
-                orderItems = simpleItems || [];
-            }
-            
-            // If we got items, try to get product information
-            if (orderItems.length > 0) {
-                console.log("Found", orderItems.length, "items, trying to get product info");
+        async function viewOrder(orderId) {
+            try {
+                console.log("Loading order details for ID:", orderId);
                 
-                // Get unique product IDs
-                const productIds = [...new Set(orderItems.map(item => item.product_id).filter(id => id !== null))];
+                // Show loading indicator
+                const orderInfo = document.getElementById('order-info');
+                const orderItemsTbody = document.getElementById('order-items-tbody');
+                const orderTotalAmount = document.getElementById('order-total-amount');
                 
-                if (productIds.length > 0) {
-                    // Fetch product information
-                    const { data: products, error: productsError } = await supabase
-                        .from('products')
-                        .select('id, name_ar, name_en, image_url')
-                        .in('id', productIds);
+                if (orderInfo) orderInfo.innerHTML = '<div class="spinner"></div>';
+                if (orderItemsTbody) orderItemsTbody.innerHTML = '<tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>';
+                if (orderTotalAmount) orderTotalAmount.textContent = '0';
+                
+                // Get order details
+                const { data: order, error: orderError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+                
+                if (orderError) throw orderError;
+                
+                console.log("Order data:", order);
+                
+                // Get customer details
+                const { data: customer, error: customerError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', order.user_id)
+                    .single();
+                
+                if (customerError) throw customerError;
+                
+                console.log("Customer data:", customer);
+                
+                // Try to get order items from different sources
+                let orderItems = [];
+                
+                // First try: order_items table
+                try {
+                    const { data: items, error: itemsError } = await supabase
+                        .from('order_items')
+                        .select(`
+                            *,
+                            products:product_id (id, name_ar, name_en, image_url)
+                        `)
+                        .eq('order_id', orderId);
                     
-                    if (productsError) {
-                        console.error("Error fetching products:", productsError);
-                    } else {
-                        console.log("Products data:", products);
+                    if (!itemsError && items && items.length > 0) {
+                        orderItems = items;
+                        console.log("Found items in order_items table:", orderItems);
+                    }
+                } catch (error) {
+                    console.log("order_items table doesn't exist or error:", error.message);
+                }
+                
+                // Second try: order_items_backup table
+                if (orderItems.length === 0) {
+                    try {
+                        const { data: backupItems, error: backupError } = await supabase
+                            .from('order_items_backup')
+                            .select(`
+                                *,
+                                products:product_id (id, name_ar, name_en, image_url)
+                            `)
+                            .eq('order_id', orderId);
                         
-                        // Create a map of products by ID
-                        const productMap = {};
-                        products.forEach(product => {
-                            productMap[product.id] = product;
-                        });
-                        
-                        // Add product information to order items
-                        orderItems.forEach(item => {
-                            if (item.product_id && productMap[item.product_id]) {
-                                item.products = productMap[item.product_id];
-                            }
-                        });
+                        if (!backupError && backupItems && backupItems.length > 0) {
+                            orderItems = backupItems;
+                            console.log("Found items in order_items_backup table:", orderItems);
+                        }
+                    } catch (error) {
+                        console.log("order_items_backup table doesn't exist or error:", error.message);
                     }
                 }
-            }
-        } catch (error) {
-            console.error("Exception when fetching order items:", error);
-        }
-        
-        // If no items found in order_items_backup, check local storage
-        if (orderItems.length === 0) {
-            console.log("No order items found in order_items_backup, checking local storage");
-            
-            // Check for pending order items in local storage
-            const pendingOrderItemsKey = `pending_order_items_${orderId}`;
-            const pendingOrderItemsJson = localStorage.getItem(pendingOrderItemsKey);
-            
-            if (pendingOrderItemsJson) {
-                try {
-                    const pendingOrderItems = JSON.parse(pendingOrderItemsJson);
+                
+                // Third try: Check local storage for pending items
+                if (orderItems.length === 0) {
+                    const pendingOrderItemsKey = `pending_order_items_${orderId}`;
+                    const pendingOrderItemsJson = localStorage.getItem(pendingOrderItemsKey);
                     
-                    if (pendingOrderItems.items && pendingOrderItems.items.length > 0) {
-                        console.log("Found pending order items in local storage:", pendingOrderItems);
-                        
-                        // Convert pending items to the same format as order items
-                        orderItems = pendingOrderItems.items.map(item => ({
-                            id: `pending_${item.product_id}`,
-                            order_id: orderId,
-                            product_id: item.product_id,
-                            product_name: item.product_name,
-                            quantity: item.quantity,
-                            unit_price: item.unit_price
-                        }));
-                    }
-                } catch (e) {
-                    console.error("Error parsing pending order items:", e);
-                }
-            }
-            
-            // Also check for the old format of pending order items
-            const pendingOrderItemsKey2 = `pending_order_items`;
-            const pendingOrderItemsJson2 = localStorage.getItem(pendingOrderItemsKey2);
-            
-            if (pendingOrderItemsJson2 && orderItems.length === 0) {
-                try {
-                    const pendingOrderItems2 = JSON.parse(pendingOrderItemsJson2);
-                    
-                    if (Array.isArray(pendingOrderItems2)) {
-                        // Filter items for this order
-                        const orderPendingItems = pendingOrderItems2.filter(item => 
-                            item.order_id === orderId || item.order_id === parseInt(orderId)
-                        );
-                        
-                        if (orderPendingItems.length > 0) {
-                            console.log("Found pending order items in old format:", orderPendingItems);
+                    if (pendingOrderItemsJson) {
+                        try {
+                            const pendingOrderItems = JSON.parse(pendingOrderItemsJson);
                             
-                            // Convert to the same format
-                            orderItems = orderPendingItems.map(item => ({
-                                id: `pending_${item.product_id}`,
-                                order_id: orderId,
-                                product_id: item.product_id,
-                                product_name: item.product_name,
-                                quantity: item.quantity,
-                                unit_price: item.unit_price
-                            }));
+                            if (pendingOrderItems.items && pendingOrderItems.items.length > 0) {
+                                console.log("Found pending order items in local storage:", pendingOrderItems);
+                                
+                                // Convert pending items to the same format as order items
+                                orderItems = pendingOrderItems.items.map(item => ({
+                                    id: `pending_${item.product_id}`,
+                                    order_id: orderId,
+                                    product_id: item.product_id,
+                                    products: {
+                                        id: item.product_id,
+                                        name_ar: item.product_name,
+                                        name_en: item.product_name,
+                                        image_url: null
+                                    },
+                                    quantity: item.quantity,
+                                    unit_price: item.unit_price
+                                }));
+                            }
+                        } catch (e) {
+                            console.error("Error parsing pending order items:", e);
                         }
                     }
-                } catch (e) {
-                    console.error("Error parsing pending order items (old format):", e);
                 }
-            }
-        }
-        
-        // If still no items, create a fallback from the order data
-        if (orderItems.length === 0) {
-            console.log("No order items found anywhere, creating fallback from order data");
-            
-            // Create a fallback item based on the order total
-            orderItems = [{
-                id: 'fallback',
-                order_id: orderId,
-                product_id: null,
-                product_name: currentLanguage === 'ar' ? 'طلب عام' : 'General Order',
-                quantity: 1,
-                unit_price: order.total || 0
-            }];
-        }
-        
-        console.log("Final order items:", orderItems);
-        
-        // Update modal title
-        const orderDetailsTitle = document.getElementById('order-details-title');
-        if (orderDetailsTitle) {
-            orderDetailsTitle.textContent = `${translations[currentLanguage].orderDetails} #${order.order_number || order.id}`;
-        }
-        
-        // Populate order info
-        if (orderInfo) {
-            // Extract shipping address from JSON if available
-            let shippingAddress = 'N/A';
-            if (order.shipping_address) {
-                try {
-                    if (typeof order.shipping_address === 'string') {
-                        const addr = JSON.parse(order.shipping_address);
-                        shippingAddress = `${addr.address || ''}, ${addr.city || ''}, ${addr.postal_code || ''}`.replace(/^, |, $/g, '');
-                    } else if (typeof order.shipping_address === 'object') {
-                        shippingAddress = `${order.shipping_address.address || ''}, ${order.shipping_address.city || ''}, ${order.shipping_address.postal_code || ''}`.replace(/^, |, $/g, '');
-                    }
-                } catch (e) {
-                    console.error("Error parsing shipping address:", e);
-                    shippingAddress = 'N/A';
+                
+                // If still no items, create a fallback from the order data
+                if (orderItems.length === 0) {
+                    console.log("No order items found anywhere, creating fallback from order data");
+                    
+                    // Create a fallback item based on the order total
+                    orderItems = [{
+                        id: 'fallback',
+                        order_id: orderId,
+                        product_id: null,
+                        products: {
+                            id: null,
+                            name_ar: currentLanguage === 'ar' ? 'طلب عام' : 'General Order',
+                            name_en: currentLanguage === 'ar' ? 'طلب عام' : 'General Order',
+                            image_url: null
+                        },
+                        quantity: 1,
+                        unit_price: order.total || 0
+                    }];
                 }
-            } else if (order.delivery_address) {
-                shippingAddress = order.delivery_address;
-            }
-            
-            orderInfo.innerHTML = `
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].orderNumber}</h4>
-                    <p>#${order.order_number || order.id}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].orderDate}</h4>
-                    <p>${formatDate(order.created_at)}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].orderStatus}</h4>
-                    <p><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].customerName}</h4>
-                    <p>${customer.full_name || 'Unknown'}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].customerEmail}</h4>
-                    <p>${customer.email || 'N/A'}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].customerPhone}</h4>
-                    <p>${customer.phone || 'N/A'}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].shippingAddress}</h4>
-                    <p>${shippingAddress}</p>
-                </div>
-                <div class="order-info-item">
-                    <h4>${translations[currentLanguage].paymentMethod}</h4>
-                    <p>${order.payment_method || 'N/A'}</p>
-                </div>
-            `;
-        }
-        
-        // Populate order items
-        if (orderItemsTbody) {
-            orderItemsTbody.innerHTML = '';
-            
-            let total = 0;
-            
-            if (orderItems && orderItems.length > 0) {
-                orderItems.forEach(item => {
-                    // Get product name from multiple possible sources
-                    let productName = '';
-                    if (item.product_name) {
-                        productName = item.product_name;
-                    } else if (item.products) {
-                        productName = currentLanguage === 'ar' 
-                            ? (item.products.name_ar || 'منتج غير معروف')
-                            : (item.products.name_en || 'Unknown Product');
-                    } else {
-                        productName = currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product';
+                
+                console.log("Final order items:", orderItems);
+                
+                // Update modal title
+                const orderDetailsTitle = document.getElementById('order-details-title');
+                if (orderDetailsTitle) {
+                    orderDetailsTitle.textContent = `${translations[currentLanguage].orderDetails} #${order.order_number || order.id}`;
+                }
+                
+                // Extract shipping address from JSON if available
+                let shippingAddress = 'N/A';
+                if (order.shipping_address) {
+                    try {
+                        if (typeof order.shipping_address === 'string') {
+                            const addr = JSON.parse(order.shipping_address);
+                            shippingAddress = `${addr.address || ''}, ${addr.city || ''}, ${addr.postal_code || ''}`.replace(/^, |, $/g, '');
+                        } else if (typeof order.shipping_address === 'object') {
+                            shippingAddress = `${order.shipping_address.address || ''}, ${order.shipping_address.city || ''}, ${order.shipping_address.postal_code || ''}`.replace(/^, |, $/g, '');
+                        }
+                    } catch (e) {
+                        console.error("Error parsing shipping address:", e);
+                        shippingAddress = 'N/A';
                     }
-                    
-                    const itemPrice = item.unit_price || 0;
-                    const itemQuantity = item.quantity || 1;
-                    const itemTotal = itemPrice * itemQuantity;
-                    total += itemTotal;
-                    
-                    // Get product image from multiple possible sources
-                    let productImage = '';
-                    if (item.products && item.products.image_url) {
-                        productImage = item.products.image_url;
-                    }
-                    
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>
-                            <div style="display: flex; align-items: center;">
-                                ${productImage 
-                                    ? `<img src="${productImage}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;" onerror="this.src='https://via.placeholder.com/40x40?text=No+Image'">` 
-                                    : ''}
-                                <span>${productName}</span>
-                            </div>
-                        </td>
-                        <td>${itemPrice.toFixed(2)} ر.س</td>
-                        <td>${itemQuantity}</td>
-                        <td>${itemTotal.toFixed(2)} ر.س</td>
+                } else if (order.delivery_address) {
+                    shippingAddress = order.delivery_address;
+                }
+                
+                // Populate order info
+                if (orderInfo) {
+                    orderInfo.innerHTML = `
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderNumber}</h4>
+                            <p>#${order.order_number || order.id}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderDate}</h4>
+                            <p>${formatDate(order.created_at)}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderStatus}</h4>
+                            <p><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerName}</h4>
+                            <p>${customer.full_name || 'Unknown'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerEmail}</h4>
+                            <p>${customer.email || 'N/A'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerPhone}</h4>
+                            <p>${customer.phone || 'N/A'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].shippingAddress}</h4>
+                            <p>${shippingAddress}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].paymentMethod}</h4>
+                            <p>${order.payment_method || 'N/A'}</p>
+                        </div>
                     `;
-                    orderItemsTbody.appendChild(row);
-                });
-            } else {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="4" class="text-center">${currentLanguage === 'ar' ? 'لا توجد عناصر' : 'No items found'}</td>`;
-                orderItemsTbody.appendChild(row);
+                }
+                
+                // Populate order items
+                if (orderItemsTbody) {
+                    orderItemsTbody.innerHTML = '';
+                    
+                    let total = 0;
+                    
+                    if (orderItems && orderItems.length > 0) {
+                        orderItems.forEach(item => {
+                            // Get product name from multiple possible sources
+                            let productName = '';
+                            if (item.products) {
+                                productName = currentLanguage === 'ar' 
+                                    ? (item.products.name_ar || 'منتج غير معروف')
+                                    : (item.products.name_en || 'Unknown Product');
+                            } else if (item.product_name) {
+                                productName = item.product_name;
+                            } else {
+                                productName = currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product';
+                            }
+                            
+                            const itemPrice = item.unit_price || 0;
+                            const itemQuantity = item.quantity || 1;
+                            const itemTotal = itemPrice * itemQuantity;
+                            total += itemTotal;
+                            
+                            // Get product image from multiple possible sources
+                            let productImage = '';
+                            if (item.products && item.products.image_url) {
+                                productImage = item.products.image_url;
+                            }
+                            
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>
+                                    <div style="display: flex; align-items: center;">
+                                        ${productImage 
+                                            ? `<img src="${productImage}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;" onerror="this.src='https://via.placeholder.com/40x40?text=No+Image'">` 
+                                            : ''}
+                                        <span>${productName}</span>
+                                    </div>
+                                </td>
+                                <td>${itemPrice.toFixed(2)} ر.س</td>
+                                <td>${itemQuantity}</td>
+                                <td>${itemTotal.toFixed(2)} ر.س</td>
+                            `;
+                            orderItemsTbody.appendChild(row);
+                        });
+                    } else {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td colspan="4" class="text-center">${currentLanguage === 'ar' ? 'لا توجد عناصر' : 'No items found'}</td>`;
+                        orderItemsTbody.appendChild(row);
+                    }
+                    
+                    if (orderTotalAmount) {
+                        orderTotalAmount.textContent = total.toFixed(2);
+                    }
+                }
+                
+                // Show modal
+                const orderDetailsModal = document.getElementById('order-details-modal');
+                if (orderDetailsModal) {
+                    orderDetailsModal.style.display = 'flex';
+                    console.log("Modal should be visible now");
+                }
+                
+                // Show success notification
+                showNotification(translations[currentLanguage].orderDetailsLoaded, 'success');
+            } catch (error) {
+                console.error('Error viewing order:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+                
+                // Show error in modal
+                const orderInfo = document.getElementById('order-info');
+                if (orderInfo) {
+                    orderInfo.innerHTML = `<div class="text-center" style="color: red;">${translations[currentLanguage].error}: ${error.message}</div>`;
+                }
             }
-            
-            if (orderTotalAmount) {
-                orderTotalAmount.textContent = total.toFixed(2);
-            }
         }
-        
-        // Show modal
-        const orderDetailsModal = document.getElementById('order-details-modal');
-        if (orderDetailsModal) {
-            orderDetailsModal.style.display = 'flex';
-            console.log("Modal should be visible now");
-        }
-        
-        // Show success notification
-        showNotification(translations[currentLanguage].orderDetailsLoaded, 'success');
-    } catch (error) {
-        console.error('Error viewing order:', error.message);
-        showNotification(translations[currentLanguage].error, 'error');
-        
-        // Show error in modal
-        const orderInfo = document.getElementById('order-info');
-        if (orderInfo) {
-            orderInfo.innerHTML = `<div class="text-center" style="color: red;">${translations[currentLanguage].error}: ${error.message}</div>`;
-        }
-    }
-}        // View customer
+
+        // View customer
         function viewCustomer(customerId) {
             // For simplicity, we'll just show a notification
             showNotification(currentLanguage === 'ar' ? 'عرض العميل #' + customerId : 'View Customer #' + customerId, 'info');
@@ -3203,24 +3151,18 @@ async function viewOrder(orderId) {
             }
         }
 
-        // Load reports
+        // Load reports - FIXED VERSION
         async function loadReports() {
             try {
-                // تدمير الرسوم البيانية الموجودة مسبقاً
+                // Destroy existing charts
                 const salesChart = Chart.getChart('sales-chart');
-                if (salesChart) {
-                    salesChart.destroy();
-                }
+                if (salesChart) salesChart.destroy();
                 
                 const ordersChart = Chart.getChart('orders-chart');
-                if (ordersChart) {
-                    ordersChart.destroy();
-                }
+                if (ordersChart) ordersChart.destroy();
                 
                 const productsChart = Chart.getChart('products-chart');
-                if (productsChart) {
-                    productsChart.destroy();
-                }
+                if (productsChart) productsChart.destroy();
                 
                 // Load sales data
                 const { data: salesData, error: salesError } = await supabase
@@ -3310,9 +3252,11 @@ async function viewOrder(orderId) {
                     });
                 }
                 
-                // Load top selling products
+                // Load top selling products - with error handling
+                let topProductsData = [];
                 try {
-                    const { data: topProductsData, error: topProductsError } = await supabase
+                    // Try to get data from order_items table
+                    const { data: productsData, error: productsError } = await supabase
                         .from('order_items')
                         .select(`
                             product_id,
@@ -3323,75 +3267,71 @@ async function viewOrder(orderId) {
                         .order('quantity', { ascending: false })
                         .limit(5);
                     
-                    if (topProductsError) throw topProductsError;
-                    
-                    // Group by product
-                    const productQuantities = {};
-                    topProductsData.forEach(item => {
-                        const productName = currentLanguage === 'ar' 
-                            ? item.products?.name_ar || 'Unknown' 
-                            : item.products?.name_en || 'Unknown';
-                        
-                        if (!productQuantities[productName]) {
-                            productQuantities[productName] = 0;
-                        }
-                        productQuantities[productName] += item.quantity || 0;
-                    });
-                    
-                    // Create top selling products chart
-                    const productsCtx = document.getElementById('products-chart');
-                    if (productsCtx) {
-                        new Chart(productsCtx, {
-                            type: 'bar',
-                            data: {
-                                labels: Object.keys(productQuantities),
-                                datasets: [{
-                                    label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
-                                    data: Object.values(productQuantities),
-                                    backgroundColor: 'rgba(46, 204, 113, 0.6)',
-                                    borderColor: 'rgba(46, 204, 113, 1)',
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
-                                    }
-                                }
-                            }
-                        });
+                    if (!productsError && productsData) {
+                        topProductsData = productsData;
                     }
                 } catch (error) {
-                    console.error('Error loading top products:', error.message);
-                    // If order_items table doesn't exist, show empty chart
-                    const productsCtx = document.getElementById('products-chart');
-                    if (productsCtx) {
-                        new Chart(productsCtx, {
-                            type: 'bar',
-                            data: {
-                                labels: [currentLanguage === 'ar' ? 'لا توجد بيانات' : 'No data'],
-                                datasets: [{
-                                    label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
-                                    data: [0],
-                                    backgroundColor: 'rgba(46, 204, 113, 0.6)',
-                                    borderColor: 'rgba(46, 204, 113, 1)',
-                                    borderWidth: 1
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
-                                    }
+                    console.log("order_items table doesn't exist or error:", error.message);
+                    
+                    // Try order_items_backup table
+                    try {
+                        const { data: backupData, error: backupError } = await supabase
+                            .from('order_items_backup')
+                            .select(`
+                                product_id,
+                                products:product_id (name_ar, name_en),
+                                quantity,
+                                unit_price
+                            `)
+                            .order('quantity', { ascending: false })
+                            .limit(5);
+                        
+                        if (!backupError && backupData) {
+                            topProductsData = backupData;
+                        }
+                    } catch (backupError) {
+                        console.log("order_items_backup table doesn't exist or error:", backupError.message);
+                    }
+                }
+                
+                // Group by product
+                const productQuantities = {};
+                topProductsData.forEach(item => {
+                    const productName = currentLanguage === 'ar' 
+                        ? (item.products?.name_ar || 'Unknown') 
+                        : (item.products?.name_en || 'Unknown');
+                    
+                    if (!productQuantities[productName]) {
+                        productQuantities[productName] = 0;
+                    }
+                    productQuantities[productName] += item.quantity || 0;
+                });
+                
+                // Create top selling products chart
+                const productsCtx = document.getElementById('products-chart');
+                if (productsCtx) {
+                    new Chart(productsCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: Object.keys(productQuantities),
+                            datasets: [{
+                                label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
+                                data: Object.values(productQuantities),
+                                backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                                borderColor: 'rgba(46, 204, 113, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
                                 }
                             }
-                        });
-                    }
+                        }
+                    });
                 }
             } catch (error) {
                 console.error('Error loading reports:', error.message);
