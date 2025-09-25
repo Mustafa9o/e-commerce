@@ -3472,6 +3472,7 @@
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - TRIGGER-COMPATIBLE VERSION
 // Handle checkout form submission - CORRECTED COLUMN NAMES VERSION
+// Handle checkout form submission - AFTER DELETING TRIGGERS
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3543,12 +3544,11 @@ async function handleCheckout(e) {
         // Get the order ID
         const orderId = orderDataResult[0].id;
         
-        // Create order items with only the fields that exist in the table
+        // Create order items
         let itemsCreated = 0;
         
         for (const item of cart) {
             try {
-                // Create order item with only the essential fields
                 const orderItemData = {
                     order_id: orderId,
                     product_id: item.id,
@@ -3562,36 +3562,11 @@ async function handleCheckout(e) {
                 
                 if (itemError) {
                     console.error('Error creating order item:', itemError);
-                    
-                    // If the error is about the 'total' field, try without it
-                    if (itemError.message.includes('record "new" has no field "total"')) {
-                        console.log('Trying without the total field...');
-                        
-                        // Try again with just the basic fields
-                        const basicOrderItemData = {
-                            order_id: orderId,
-                            product_id: item.id,
-                            quantity: item.quantity
-                        };
-                        
-                        const { error: basicItemError } = await supabase
-                            .from('order_items')
-                            .insert([basicOrderItemData]);
-                        
-                        if (basicItemError) {
-                            console.error('Error creating basic order item:', basicItemError);
-                            throw basicItemError;
-                        }
-                        
-                        console.log('Basic order item created successfully');
-                        itemsCreated++;
-                    } else {
-                        throw itemError;
-                    }
-                } else {
-                    console.log('Order item created successfully');
-                    itemsCreated++;
+                    throw itemError;
                 }
+                
+                console.log('Order item created successfully');
+                itemsCreated++;
             } catch (itemError) {
                 console.error('Failed to create order item:', itemError);
                 // Continue with other items even if this one fails
@@ -3620,21 +3595,7 @@ async function handleCheckout(e) {
         let errorMessage = '';
         
         if (error.message) {
-            if (error.message.includes('record "new" has no field "total"')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('column "total" of relation "orders" does not exist')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: حقل الإجمالي غير موجود. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('column') && error.message.includes('does not exist')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: عمود غير موجود. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('ambiguous')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('null value in column')) {
-                errorMessage = 'حدث خطأ: حقل إلزامي فارغ. يرجى التأكد من إدخال جميع البيانات المطلوبة.';
-            } else if (error.message.includes('duplicate key')) {
-                errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
-            } else {
-                errorMessage = `حدث خطأ: ${error.message}`;
-            }
+            errorMessage = `حدث خطأ: ${error.message}`;
         } else if (error.code) {
             errorMessage = `حدث خطأ (كود ${error.code}): يرجى التواصل مع الدعم الفني.`;
         } else {
