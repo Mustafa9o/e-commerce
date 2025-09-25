@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.4/dist/umd/supabase.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Existing CSS styles remain the same */
         :root {
             --primary-color: #3498db;
             --secondary-color: #2c3e50;
@@ -638,6 +639,70 @@
             transform: scale(1.05);
         }
 
+        /* Order Details Styles */
+        .order-details {
+            margin-top: 20px;
+        }
+
+        .order-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .order-info-item {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: var(--border-radius);
+        }
+
+        .order-info-item h4 {
+            margin-bottom: 5px;
+            color: var(--secondary-color);
+            font-size: 14px;
+        }
+
+        .order-info-item p {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        .order-items {
+            margin-top: 20px;
+        }
+
+        .order-items h3 {
+            margin-bottom: 15px;
+            color: var(--secondary-color);
+        }
+
+        .order-items-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .order-items-table th, .order-items-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: start;
+        }
+
+        .order-items-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .order-total {
+            margin-top: 20px;
+            text-align: end;
+        }
+
+        .order-total p {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
         /* Responsive Design - Fixed */
         @media (max-width: 1200px) {
             .main-content {
@@ -938,7 +1003,7 @@
                     <div class="dropdown">
                         <div class="user-info">
                             <img src="https://via.placeholder.com/35" alt="User" class="user-avatar">
-                            <span class="user-name">مدير النظام</span>
+                            <span class="user-name" id="header-user-name">مدير النظام</span>
                         </div>
                         <div class="dropdown-content">
                             <a href="#" data-page="profile">حسابي</a>
@@ -1410,6 +1475,42 @@
         </div>
     </div>
 
+    <!-- Order Details Modal -->
+    <div class="modal" id="order-details-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>تفاصيل الطلب</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="order-details">
+                <div class="order-info" id="order-info">
+                    <!-- Order info will be populated here -->
+                </div>
+                <div class="order-items">
+                    <h3>عناصر الطلب</h3>
+                    <div class="table-responsive">
+                        <table class="order-items-table">
+                            <thead>
+                                <tr>
+                                    <th>المنتج</th>
+                                    <th>السعر</th>
+                                    <th>الكمية</th>
+                                    <th>المجموع</th>
+                                </tr>
+                            </thead>
+                            <tbody id="order-items-tbody">
+                                <!-- Order items will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="order-total">
+                        <p>الإجمالي: <span id="order-total-amount">0</span> ر.س</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Initialize Supabase
         const supabaseUrl = 'https://gmdjwwtlfjoiejsaqgdr.supabase.co';
@@ -1513,7 +1614,23 @@
                 adminName: 'الاسم الكامل',
                 adminEmail: 'البريد الإلكتروني',
                 adminPhone: 'رقم الهاتف',
-                adminPassword: 'كلمة المرور الجديدة'
+                adminPassword: 'كلمة المرور الجديدة',
+                
+                // Order Details
+                orderDetails: 'تفاصيل الطلب',
+                orderItems: 'عناصر الطلب',
+                product: 'المنتج',
+                quantity: 'الكمية',
+                total: 'المجموع',
+                shippingAddress: 'عنوان الشحن',
+                billingAddress: 'عنوان الفوترة',
+                paymentMethod: 'طريقة الدفع',
+                orderDate: 'تاريخ الطلب',
+                orderStatus: 'حالة الطلب',
+                customerInfo: 'معلومات العميل',
+                customerName: 'اسم العميل',
+                customerEmail: 'بريد العميل الإلكتروني',
+                customerPhone: 'هاتف العميل'
             },
             en: {
                 // Navigation
@@ -1610,7 +1727,23 @@
                 adminName: 'Full Name',
                 adminEmail: 'Email',
                 adminPhone: 'Phone',
-                adminPassword: 'New Password'
+                adminPassword: 'New Password',
+                
+                // Order Details
+                orderDetails: 'Order Details',
+                orderItems: 'Order Items',
+                product: 'Product',
+                quantity: 'Quantity',
+                total: 'Total',
+                shippingAddress: 'Shipping Address',
+                billingAddress: 'Billing Address',
+                paymentMethod: 'Payment Method',
+                orderDate: 'Order Date',
+                orderStatus: 'Order Status',
+                customerInfo: 'Customer Information',
+                customerName: 'Customer Name',
+                customerEmail: 'Customer Email',
+                customerPhone: 'Customer Phone'
             }
         };
 
@@ -1642,6 +1775,7 @@
             if (user) {
                 currentUser = user;
                 checkAdminRole();
+                loadUserProfile();
             } else {
                 // Redirect to login page
                 window.location.href = 'admin-login.html';
@@ -1671,6 +1805,38 @@
                 console.error('Error checking admin role:', error.message);
                 // Redirect to login page
                 window.location.href = 'admin-login.html';
+            }
+        }
+
+        // Load user profile
+        async function loadUserProfile() {
+            if (!currentUser) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', currentUser.id)
+                    .single();
+                
+                if (error) throw error;
+                
+                // Update header with user name
+                const headerUserName = document.getElementById('header-user-name');
+                if (headerUserName) {
+                    headerUserName.textContent = data.full_name || 'مدير النظام';
+                }
+                
+                // Update profile form
+                const adminName = document.getElementById('admin-name');
+                const adminEmail = document.getElementById('admin-email');
+                const adminPhone = document.getElementById('admin-phone');
+                
+                if (adminName) adminName.value = data.full_name || '';
+                if (adminEmail) adminEmail.value = currentUser.email || '';
+                if (adminPhone) adminPhone.value = data.phone || '';
+            } catch (error) {
+                console.error('Error loading user profile:', error.message);
             }
         }
 
@@ -2678,9 +2844,114 @@
         }
 
         // View order
-        function viewOrder(orderId) {
-            // For simplicity, we'll just show a notification
-            showNotification(currentLanguage === 'ar' ? 'عرض الطلب #' + orderId : 'View Order #' + orderId, 'info');
+        async function viewOrder(orderId) {
+            try {
+                // Get order details
+                const { data: order, error: orderError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+                
+                if (orderError) throw orderError;
+                
+                // Get customer details
+                const { data: customer, error: customerError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', order.user_id)
+                    .single();
+                
+                if (customerError) throw customerError;
+                
+                // Get order items
+                const { data: orderItems, error: orderItemsError } = await supabase
+                    .from('order_items')
+                    .select(`
+                        *,
+                        products:product_id (name_ar, name_en)
+                    `)
+                    .eq('order_id', orderId);
+                
+                if (orderItemsError) throw orderItemsError;
+                
+                // Populate order info
+                const orderInfo = document.getElementById('order-info');
+                if (orderInfo) {
+                    orderInfo.innerHTML = `
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderNumber}</h4>
+                            <p>#${order.order_number || order.id}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderDate}</h4>
+                            <p>${formatDate(order.created_at)}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].orderStatus}</h4>
+                            <p><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerName}</h4>
+                            <p>${customer.full_name || 'Unknown'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerEmail}</h4>
+                            <p>${customer.email || 'N/A'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].customerPhone}</h4>
+                            <p>${customer.phone || 'N/A'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].shippingAddress}</h4>
+                            <p>${order.shipping_address || 'N/A'}</p>
+                        </div>
+                        <div class="order-info-item">
+                            <h4>${translations[currentLanguage].paymentMethod}</h4>
+                            <p>${order.payment_method || 'N/A'}</p>
+                        </div>
+                    `;
+                }
+                
+                // Populate order items
+                const orderItemsTbody = document.getElementById('order-items-tbody');
+                const orderTotalAmount = document.getElementById('order-total-amount');
+                
+                if (orderItemsTbody) {
+                    orderItemsTbody.innerHTML = '';
+                    
+                    let total = 0;
+                    
+                    orderItems.forEach(item => {
+                        const productName = currentLanguage === 'ar' 
+                            ? item.products?.name_ar || 'Unknown' 
+                            : item.products?.name_en || 'Unknown';
+                        
+                        const itemTotal = item.unit_price * item.quantity;
+                        total += itemTotal;
+                        
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${productName}</td>
+                            <td>${item.unit_price} ر.س</td>
+                            <td>${item.quantity}</td>
+                            <td>${itemTotal.toFixed(2)} ر.س</td>
+                        `;
+                        orderItemsTbody.appendChild(row);
+                    });
+                    
+                    if (orderTotalAmount) {
+                        orderTotalAmount.textContent = total.toFixed(2);
+                    }
+                }
+                
+                // Show modal
+                document.getElementById('order-details-modal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error viewing order:', error.message);
+                showNotification(translations[currentLanguage].error, 'error');
+            }
         }
 
         // Update order status
@@ -2969,6 +3240,14 @@
                     });
                     
                     if (emailError) throw emailError;
+                    
+                    // Show notification that email change requires confirmation
+                    showNotification(
+                        currentLanguage === 'ar' 
+                            ? 'تم إرسال بريد تأكيد إلى عنوان البريد الإلكتروني الجديد. يرجى التحقق من بريدك الإلكتروني وتأكيد التغيير.' 
+                            : 'A confirmation email has been sent to your new email address. Please check your email and confirm the change.',
+                        'info'
+                    );
                 }
                 
                 // Update password if provided
@@ -2978,8 +3257,18 @@
                     });
                     
                     if (passwordError) throw passwordError;
+                    
+                    // Clear password field
+                    document.getElementById('admin-password').value = '';
                 }
                 
+                // Update header with new name
+                const headerUserName = document.getElementById('header-user-name');
+                if (headerUserName) {
+                    headerUserName.textContent = adminName;
+                }
+                
+                // Show success notification
                 showNotification(translations[currentLanguage].profileUpdated, 'success');
             } catch (error) {
                 console.error('Error updating profile:', error.message);
