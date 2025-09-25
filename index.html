@@ -3466,6 +3466,7 @@
 
         // Handle checkout form submission - FIXED VERSION
       // Handle checkout form submission - FIXED VERSION
+// Handle checkout form submission - FIXED VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3499,22 +3500,41 @@ async function handleCheckout(e) {
         });
         
         // Create order using the correct field names based on the schema
-        const orderData = {
-            user_id: currentUser.id,
-            order_number: orderNumber,
-            status: 'pending',
-            payment_method: paymentMethod,
-            currency: 'SAR',
-            delivery_name: name,
-            delivery_phone: phone,
-            delivery_address: address,
-            delivery_city: city,
-            delivery_postal: postal
-        };
+        let orderData;
         
-        // Add subtotal and total fields
-        orderData.subtotal = subtotal;
-        orderData.total = total;
+        if (dbSchema === 'new') {
+            // New schema (order_subtotal, order_total)
+            orderData = {
+                user_id: currentUser.id,
+                order_number: orderNumber,
+                status: 'pending',
+                payment_method: paymentMethod,
+                currency: 'SAR',
+                delivery_name: name,
+                delivery_phone: phone,
+                delivery_address: address,
+                delivery_city: city,
+                delivery_postal: postal,
+                order_subtotal: subtotal,
+                order_total: total
+            };
+        } else {
+            // Old schema (subtotal, total)
+            orderData = {
+                user_id: currentUser.id,
+                order_number: orderNumber,
+                status: 'pending',
+                payment_method: paymentMethod,
+                currency: 'SAR',
+                delivery_name: name,
+                delivery_phone: phone,
+                delivery_address: address,
+                delivery_city: city,
+                delivery_postal: postal,
+                subtotal: subtotal,
+                total: total
+            };
+        }
         
         // Use the Supabase client to insert the order
         const { data: orderDataResult, error: orderError } = await supabase
@@ -3524,12 +3544,81 @@ async function handleCheckout(e) {
         
         if (orderError) {
             console.error('Order creation error:', orderError);
-            throw new Error(orderError.message || 'Failed to create order');
+            
+            // If we get an error about the 'total' field, try the alternative schema
+            if (orderError.message && orderError.message.includes('column "total" does not exist')) {
+                console.log('Trying alternative schema...');
+                
+                // Try with the other schema
+                if (dbSchema === 'old') {
+                    // Try new schema
+                    const newOrderData = {
+                        user_id: currentUser.id,
+                        order_number: orderNumber,
+                        status: 'pending',
+                        payment_method: paymentMethod,
+                        currency: 'SAR',
+                        delivery_name: name,
+                        delivery_phone: phone,
+                        delivery_address: address,
+                        delivery_city: city,
+                        delivery_postal: postal,
+                        order_subtotal: subtotal,
+                        order_total: total
+                    };
+                    
+                    const { data: newOrderDataResult, error: newOrderError } = await supabase
+                        .from('orders')
+                        .insert([newOrderData])
+                        .select();
+                    
+                    if (newOrderError) {
+                        console.error('Alternative schema also failed:', newOrderError);
+                        throw new Error(newOrderError.message || 'Failed to create order with alternative schema');
+                    }
+                    
+                    // Update the schema for future requests
+                    dbSchema = 'new';
+                    orderDataResult = newOrderDataResult;
+                } else {
+                    // Try old schema
+                    const oldOrderData = {
+                        user_id: currentUser.id,
+                        order_number: orderNumber,
+                        status: 'pending',
+                        payment_method: paymentMethod,
+                        currency: 'SAR',
+                        delivery_name: name,
+                        delivery_phone: phone,
+                        delivery_address: address,
+                        delivery_city: city,
+                        delivery_postal: postal,
+                        subtotal: subtotal,
+                        total: total
+                    };
+                    
+                    const { data: oldOrderDataResult, error: oldOrderError } = await supabase
+                        .from('orders')
+                        .insert([oldOrderData])
+                        .select();
+                    
+                    if (oldOrderError) {
+                        console.error('Alternative schema also failed:', oldOrderError);
+                        throw new Error(oldOrderError.message || 'Failed to create order with alternative schema');
+                    }
+                    
+                    // Update the schema for future requests
+                    dbSchema = 'old';
+                    orderDataResult = oldOrderDataResult;
+                }
+            } else {
+                throw new Error(orderError.message || 'Failed to create order');
+            }
         }
         
         console.log('Order created successfully:', orderDataResult);
         
-        // Create order items
+        // Create order items using the REST API directly to avoid trigger issues
         const orderItems = cart.map(item => ({
             order_id: orderDataResult[0].id,
             product_id: item.id,
@@ -3538,16 +3627,43 @@ async function handleCheckout(e) {
             product_name: currentLanguage === 'ar' ? item.name : item.nameEn
         }));
         
-        const { error: itemsError } = await supabase
-            .from('order_items')
-            .insert(orderItems);
-        
-        if (itemsError) {
-            console.error('Order items creation error:', itemsError);
-            throw new Error(itemsError.message || 'Failed to create order items');
+        try {
+            // Try using the Supabase client first
+            const { error: itemsError } = await supabase
+                .from('order_items')
+                .insert(orderItems);
+            
+            if (itemsError) {
+                console.error('Order items creation error with Supabase client:', itemsError);
+                
+                // If that fails, try using the REST API directly
+                console.log('Trying with REST API...');
+                
+                const response = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(orderItems)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('REST API error:', errorData);
+                    throw new Error(errorData.message || 'Failed to create order items with REST API');
+                }
+                
+                console.log('Order items created successfully with REST API');
+            } else {
+                console.log('Order items created successfully with Supabase client');
+            }
+        } catch (error) {
+            console.error('All order items creation methods failed:', error);
+            throw new Error(error.message || 'Failed to create order items');
         }
-        
-        console.log('Order items created successfully');
         
         // Clear cart
         cart = [];
@@ -3569,7 +3685,9 @@ async function handleCheckout(e) {
         let errorMessage = '';
         
         if (error.message) {
-            if (error.message.includes('column "total" of relation "orders" does not exist')) {
+            if (error.message.includes('record "new" has no field "total"')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. يتم العمل على إصلاح هذه المشكلة.';
+            } else if (error.message.includes('column "total" of relation "orders" does not exist')) {
                 errorMessage = 'حدث خطأ في قاعدة البيانات: حقل الإجمالي غير موجود. يتم العمل على إصلاح هذه المشكلة.';
             } else if (error.message.includes('column') && error.message.includes('does not exist')) {
                 errorMessage = 'حدث خطأ في قاعدة البيانات: عمود غير موجود. يرجى التواصل مع الدعم الفني.';
@@ -3595,8 +3713,7 @@ async function handleCheckout(e) {
         // Show notification
         showNotification(errorMessage, 'error');
     }
-}
-        // Handle logout
+}        // Handle logout
         async function handleLogout() {
             try {
                 await supabase.auth.signOut();
