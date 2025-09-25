@@ -3471,6 +3471,7 @@
 // Handle checkout form submission - FIXED for your database schema
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - TRIGGER-COMPATIBLE VERSION
+// Handle checkout form submission - CORRECTED COLUMN NAMES VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3542,24 +3543,17 @@ async function handleCheckout(e) {
         // Get the order ID
         const orderId = orderDataResult[0].id;
         
-        // Create order items with all possible fields to satisfy triggers
+        // Create order items with only the fields that exist in the table
         let itemsCreated = 0;
         
         for (const item of cart) {
             try {
-                const itemTotal = item.quantity * item.price;
-                
-                // Create order item with all possible fields that triggers might expect
+                // Create order item with only the essential fields
                 const orderItemData = {
                     order_id: orderId,
                     product_id: item.id,
                     quantity: item.quantity,
-                    unit_price: item.price,
-                    // Add fields that triggers might expect
-                    total: itemTotal,  // For the update_order_item_total trigger
-                    price: item.price,  // Alternative field name
-                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
-                    created_at: new Date().toISOString()
+                    unit_price: item.price
                 };
                 
                 const { error: itemError } = await supabase
@@ -3568,11 +3562,36 @@ async function handleCheckout(e) {
                 
                 if (itemError) {
                     console.error('Error creating order item:', itemError);
-                    throw itemError;
+                    
+                    // If the error is about the 'total' field, try without it
+                    if (itemError.message.includes('record "new" has no field "total"')) {
+                        console.log('Trying without the total field...');
+                        
+                        // Try again with just the basic fields
+                        const basicOrderItemData = {
+                            order_id: orderId,
+                            product_id: item.id,
+                            quantity: item.quantity
+                        };
+                        
+                        const { error: basicItemError } = await supabase
+                            .from('order_items')
+                            .insert([basicOrderItemData]);
+                        
+                        if (basicItemError) {
+                            console.error('Error creating basic order item:', basicItemError);
+                            throw basicItemError;
+                        }
+                        
+                        console.log('Basic order item created successfully');
+                        itemsCreated++;
+                    } else {
+                        throw itemError;
+                    }
+                } else {
+                    console.log('Order item created successfully');
+                    itemsCreated++;
                 }
-                
-                console.log('Order item created successfully');
-                itemsCreated++;
             } catch (itemError) {
                 console.error('Failed to create order item:', itemError);
                 // Continue with other items even if this one fails
