@@ -3467,6 +3467,7 @@
         // Handle checkout form submission - FIXED VERSION
       // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - FIXED VERSION
+// Handle checkout form submission - FIXED VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3618,52 +3619,72 @@ async function handleCheckout(e) {
         
         console.log('Order created successfully:', orderDataResult);
         
-        // Create order items using the REST API directly to avoid trigger issues
-        const orderItems = cart.map(item => ({
-            order_id: orderDataResult[0].id,
-            product_id: item.id,
-            quantity: item.quantity,
-            unit_price: item.price,
-            product_name: currentLanguage === 'ar' ? item.name : item.nameEn
-        }));
+        // Create order items one by one to avoid trigger issues
+        const orderId = orderDataResult[0].id;
+        let itemsCreated = 0;
         
-        try {
-            // Try using the Supabase client first
-            const { error: itemsError } = await supabase
-                .from('order_items')
-                .insert(orderItems);
-            
-            if (itemsError) {
-                console.error('Order items creation error with Supabase client:', itemsError);
+        for (const item of cart) {
+            try {
+                // Try using the Supabase client first
+                const { error: itemError } = await supabase
+                    .from('order_items')
+                    .insert({
+                        order_id: orderId,
+                        product_id: item.id,
+                        quantity: item.quantity,
+                        unit_price: item.price,
+                        product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                    });
                 
-                // If that fails, try using the REST API directly
-                console.log('Trying with REST API...');
-                
-                const response = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'apikey': supabaseKey,
-                        'Authorization': `Bearer ${supabaseKey}`,
-                        'Prefer': 'return=minimal'
-                    },
-                    body: JSON.stringify(orderItems)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('REST API error:', errorData);
-                    throw new Error(errorData.message || 'Failed to create order items with REST API');
+                if (itemError) {
+                    console.error('Error creating item with Supabase client:', itemError);
+                    
+                    // If that fails, try using the REST API directly
+                    try {
+                        const response = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': supabaseKey,
+                                'Authorization': `Bearer ${supabaseKey}`,
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify({
+                                order_id: orderId,
+                                product_id: item.id,
+                                quantity: item.quantity,
+                                unit_price: item.price,
+                                product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            console.error('REST API error for item:', errorData);
+                            throw new Error(errorData.message || 'Failed to create order item with REST API');
+                        }
+                        
+                        console.log('Order item created successfully with REST API');
+                        itemsCreated++;
+                    } catch (restError) {
+                        console.error('REST API also failed for item:', restError);
+                        // Continue with other items even if this one fails
+                    }
+                } else {
+                    console.log('Order item created successfully with Supabase client');
+                    itemsCreated++;
                 }
-                
-                console.log('Order items created successfully with REST API');
-            } else {
-                console.log('Order items created successfully with Supabase client');
+            } catch (itemError) {
+                console.error('Failed to create order item:', itemError);
+                // Continue with other items even if this one fails
             }
-        } catch (error) {
-            console.error('All order items creation methods failed:', error);
-            throw new Error(error.message || 'Failed to create order items');
         }
+        
+        if (itemsCreated === 0) {
+            throw new Error('Failed to create any order items');
+        }
+        
+        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
         
         // Clear cart
         cart = [];
@@ -3697,6 +3718,8 @@ async function handleCheckout(e) {
                 errorMessage = 'حدث خطأ: حقل إلزامي فارغ. يرجى التأكد من إدخال جميع البيانات المطلوبة.';
             } else if (error.message.includes('duplicate key')) {
                 errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
+            } else if (error.message.includes('Failed to create any order items')) {
+                errorMessage = 'حدث خطأ: لم يتمكن النظام من إنشاء عناصر الطلب. يرجى المحاولة مرة أخرى لاحقاً.';
             } else {
                 errorMessage = `حدث خطأ: ${error.message}`;
             }
@@ -3713,7 +3736,7 @@ async function handleCheckout(e) {
         // Show notification
         showNotification(errorMessage, 'error');
     }
-}        // Handle logout
+}
         async function handleLogout() {
             try {
                 await supabase.auth.signOut();
