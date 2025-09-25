@@ -3474,6 +3474,7 @@
 // Handle checkout form submission - CORRECTED COLUMN NAMES VERSION
 // Handle checkout form submission - AFTER DELETING TRIGGERS
 // Handle checkout form submission - FIXED VERSION
+// Handle checkout form submission - UPDATED VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3550,6 +3551,9 @@ async function handleCheckout(e) {
         
         for (const item of cart) {
             try {
+                // Calculate the total for this item
+                const itemTotal = item.quantity * item.price;
+                
                 // Create order item with all required fields
                 const orderItemData = {
                     order_id: orderId,
@@ -3557,7 +3561,9 @@ async function handleCheckout(e) {
                     quantity: item.quantity,
                     unit_price: item.price,
                     // Add the required product_name field
-                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
+                    // Add the total field for the trigger
+                    total: itemTotal
                 };
                 
                 const { error: itemError } = await supabase
@@ -3606,6 +3612,8 @@ async function handleCheckout(e) {
                 const match = error.message.match(/null value in column "([^"]+)"/);
                 const columnName = match ? match[1] : 'حقل';
                 errorMessage = `حدث خطأ: الحقل "${columnName}" مطلوب. يرجى التأكد من إدخال جميع البيانات المطلوبة.`;
+            } else if (error.message.includes('column "total" does not exist')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: عمود الإجمالي غير موجود. يرجى التواصل مع الدعم الفني لإصلاح المشكلة.';
             } else if (error.message.includes('record "new" has no field "total"')) {
                 errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
             } else if (error.message.includes('column "total" of relation "orders" does not exist')) {
@@ -3632,8 +3640,7 @@ async function handleCheckout(e) {
         // Show notification
         showNotification(errorMessage, 'error');
     }
-}
-        async function handleLogout() {
+}        async function handleLogout() {
             try {
                 await supabase.auth.signOut();
                 currentUser = null;
