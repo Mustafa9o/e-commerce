@@ -3469,33 +3469,6 @@
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - FIXED for your database schema
-// Handle checkout form submission - FIXED VERSION
-async function handleCheckout(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('checkout-name').value;
-    const phone = document.getElementById('checkout-phone').value;
-    const address = document.getElementById('checkout-address').value;
-    const city = document.getElementById('checkout-city').value;
-    const postal = document.getElementById('checkout-postal').value;
-    const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
-    const errorElement = document.getElementById('checkout-error');
-    
-    // Reset error message
-    if (errorElement) errorElement.textContent = '';
-    
-    try {
-        // Calculate subtotal and total
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const shipping = 0; // You can modify this if you have shipping costs
-        const total = subtotal + shipping;
-        
-        // Generate order number (timestamp + random number)
-        const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        
-        console.log('Creating order with data:', {
-            user_id: currentUser.id,
-// Handle checkout form submission - FIXED VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3539,17 +3512,10 @@ async function handleCheckout(e) {
             delivery_phone: phone,
             delivery_address: address,
             delivery_city: city,
-            delivery_postal: postal
+            delivery_postal: postal,
+            subtotal: subtotal,
+            total: total
         };
-        
-        // Add subtotal and total fields based on the detected schema
-        if (dbSchema === 'new') {
-            orderData.order_subtotal = subtotal;
-            orderData.order_total = total;
-        } else {
-            orderData.subtotal = subtotal;
-            orderData.total = total;
-        }
         
         // Use the Supabase client to insert the order
         const { data: orderDataResult, error: orderError } = await supabase
@@ -3568,83 +3534,61 @@ async function handleCheckout(e) {
         const orderId = orderDataResult[0].id;
         let itemsCreated = 0;
         
-        // First, let's check what columns exist in the order_items table
-        try {
-            const { data: sampleItem, error: sampleError } = await supabase
-                .from('order_items')
-                .select('*')
-                .limit(1);
-            
-            if (sampleError) {
-                console.error('Error checking order_items schema:', sampleError);
-                throw new Error('Could not check order_items table schema');
-            }
-            
-            // Now create each order item with only the essential fields
-            for (const item of cart) {
-                try {
-                    // Create a minimal order item object with only the essential fields
-                    const orderItemData = {
+        for (const item of cart) {
+            try {
+                // Create order item using Supabase client with minimal fields
+                const { error: itemError } = await supabase
+                    .from('order_items')
+                    .insert({
                         order_id: orderId,
                         product_id: item.id,
                         quantity: item.quantity,
                         unit_price: item.price
-                    };
+                    });
+                
+                if (itemError) {
+                    console.error('Error creating item with Supabase client:', itemError);
                     
-                    // Try to create the order item
-                    const { error: itemError } = await supabase
-                        .from('order_items')
-                        .insert([orderItemData]);
-                    
-                    if (itemError) {
-                        console.error('Error creating order item:', itemError);
-                        
-                        // If there's still an error, try with different field names
-                        try {
-                            const alternativeOrderItemData = {
+                    // Try with additional fields if minimal approach fails
+                    try {
+                        const { error: itemError2 } = await supabase
+                            .from('order_items')
+                            .insert({
                                 order_id: orderId,
                                 product_id: item.id,
                                 quantity: item.quantity,
-                                price: item.price  // Try 'price' instead of 'unit_price'
-                            };
-                            
-                            const { error: altItemError } = await supabase
-                                .from('order_items')
-                                .insert([alternativeOrderItemData]);
-                            
-                            if (altItemError) {
-                                console.error('Error with alternative field names:', altItemError);
-                                throw new Error(altItemError.message || 'Failed to create order item with alternative fields');
-                            }
-                            
-                            console.log('Order item created successfully with alternative field names');
-                            itemsCreated++;
-                        } catch (altError) {
-                            console.error('Alternative approach also failed:', altError);
+                                unit_price: item.price,
+                                product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                            });
+                        
+                        if (itemError2) {
+                            console.error('Error creating item with additional fields:', itemError2);
+                            throw new Error(itemError2.message || 'Failed to create order item');
                         }
-                    } else {
-                        console.log('Order item created successfully');
+                        
+                        console.log('Order item created successfully with additional fields');
                         itemsCreated++;
+                    } catch (secondError) {
+                        console.error('Second attempt also failed:', secondError);
+                        // Continue with other items even if this one fails
                     }
-                } catch (itemError) {
-                    console.error('Failed to create order item:', itemError);
+                } else {
+                    console.log('Order item created successfully with minimal fields');
+                    itemsCreated++;
                 }
+            } catch (itemError) {
+                console.error('Failed to create order item:', itemError);
+                // Continue with other items even if this one fails
             }
-            
-            // If we couldn't create any items, but the order was created, 
-            // we'll still consider it a success and show the order confirmation
-            if (itemsCreated === 0) {
-                console.warn('No order items were created, but order was created successfully');
-                // We'll continue anyway since the main order was created
-            }
-            
-            console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
-            
-        } catch (schemaError) {
-            console.error('Error checking order_items schema:', schemaError);
-            // If we can't check the schema, we'll just continue with the order creation
-            console.warn('Continuing without creating order items due to schema issues');
         }
+        
+        // If we couldn't create any items, but the order was created, 
+        // we'll still consider it a success and show the order confirmation
+        if (itemsCreated === 0) {
+            console.warn('No order items were created, but order was created successfully');
+        }
+        
+        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
         
         // Clear cart
         cart = [];
@@ -3694,8 +3638,9 @@ async function handleCheckout(e) {
         // Show notification
         showNotification(errorMessage, 'error');
     }
-}       
-            async function handleLogout() {
+}
+        
+        async function handleLogout() {
             try {
                 await supabase.auth.signOut();
                 currentUser = null;
