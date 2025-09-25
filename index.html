@@ -3694,7 +3694,8 @@ async function handleCheckout(e) {
         // Show notification
         showNotification(errorMessage, 'error');
     }
-}        async function handleLogout() {
+}       
+            async function handleLogout() {
             try {
                 await supabase.auth.signOut();
                 currentUser = null;
