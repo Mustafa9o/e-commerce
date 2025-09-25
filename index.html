@@ -2523,6 +2523,9 @@
             fetchProducts();
             updateCartCount();
             setupEventListeners();
+            
+            // Initialize database functions
+            createOrderItemsFunction();
         });
 
         // Initialize database tables if they don't exist
@@ -3528,30 +3531,33 @@
                 // Get the order ID
                 const orderId = orderDataResult[0].id;
                 
-                // Try to create order items using the backup table
+                // Try to create order items directly in the order_items table
                 try {
-                    // Prepare items for the function
-                    const itemsForFunction = cart.map(item => ({
-                        product_id: item.id,
-                        product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
-                        quantity: item.quantity,
-                        unit_price: item.price
-                    }));
-                    
-                    // Use the function to insert order items into the backup table
-                    const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_backup', {
-                        p_order_id: orderId,
-                        p_items: itemsForFunction
+                    const orderItemsPromises = cart.map(item => {
+                        return supabase
+                            .from('order_items')
+                            .insert([{
+                                order_id: orderId,
+                                product_id: item.id,
+                                product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
+                                quantity: item.quantity,
+                                unit_price: item.price
+                            }]);
                     });
                     
-                    if (itemsError) {
-                        console.error('Error creating order items with backup table:', itemsError);
-                        throw itemsError;
+                    // Wait for all items to be inserted
+                    const results = await Promise.all(orderItemsPromises);
+                    
+                    // Check if any of the inserts failed
+                    const hasErrors = results.some(result => result.error);
+                    
+                    if (hasErrors) {
+                        throw new Error('Failed to insert some order items');
                     }
                     
-                    console.log('Order items created successfully with backup table:', itemsData);
+                    console.log('Order items created successfully');
                 } catch (itemsError) {
-                    console.error('Failed to create order items with backup table:', itemsError);
+                    console.error('Error creating order items:', itemsError);
                     
                     // Fallback: Store order items in local storage for later processing
                     const pendingOrderItems = {
@@ -3633,129 +3639,14 @@
         // Function to create the database function if it doesn't exist
         async function createOrderItemsFunction() {
             try {
-                // Create the function to insert order items without triggers
-                const { error } = await supabase.rpc('exec_sql', {
-                    sql: `
-                        CREATE OR REPLACE FUNCTION create_order_items_simple(
-                            p_order_id bigint,
-                            p_items text
-                        )
-                        RETURNS boolean
-                        LANGUAGE plpgsql
-                        SECURITY DEFINER
-                        AS $$
-                        DECLARE
-                            items_array jsonb;
-                            item record;
-                            result boolean := true;
-                        BEGIN
-                            -- Parse the JSON string
-                            items_array := p_items::jsonb;
-                            
-                            -- Disable all triggers on the order_items table
-                            ALTER TABLE order_items DISABLE TRIGGER ALL;
-                            
-                            -- Insert each item
-                            FOR item IN SELECT * FROM jsonb_to_recordset(items_array) AS x(
-                                product_id bigint,
-                                quantity integer,
-                                unit_price numeric,
-                                product_name text
-                            ) LOOP
-                                BEGIN
-                                    INSERT INTO order_items (
-                                        order_id,
-                                        product_id,
-                                        quantity,
-                                        unit_price,
-                                        product_name,
-                                        created_at
-                                    ) VALUES (
-                                        p_order_id,
-                                        item.product_id,
-                                        item.quantity,
-                                        item.unit_price,
-                                        item.product_name,
-                                        NOW()
-                                    );
-                                EXCEPTION WHEN OTHERS THEN
-                                    result := false;
-                                    RAISE NOTICE 'Error inserting order item: %', SQLERRM;
-                                END;
-                            END LOOP;
-                            
-                            -- Re-enable triggers
-                            ALTER TABLE order_items ENABLE TRIGGER ALL;
-                            
-                            RETURN result;
-                        END;
-                        $$;
-                    `
-                });
-                
-                if (error) {
-                    console.error('Error creating order_items function:', error);
-                    return false;
-                }
-                
-                console.log('Order items function created successfully');
+                // We don't need to create a custom function for this
+                // We'll handle order items creation directly in the handleCheckout function
+                console.log('Order items handling will be done directly');
                 return true;
             } catch (error) {
                 console.error('Error in createOrderItemsFunction:', error);
                 return false;
             }
-        }
-
-        // Function to execute SQL (if not already available)
-        async function createExecSqlFunction() {
-            try {
-                const { error } = await supabase.rpc('exec_sql', {
-                    sql: 'SELECT 1;'
-                });
-                
-                if (error && error.message.includes('function exec_sql(text) does not exist')) {
-                    // Create the exec_sql function
-                    const { error: createError } = await supabase.rpc('exec_sql', {
-                        sql: `
-                            CREATE OR REPLACE FUNCTION exec_sql(sql text)
-                            RETURNS void
-                            LANGUAGE plpgsql
-                            SECURITY DEFINER
-                            AS $$
-                            BEGIN
-                              EXECUTE sql;
-                            END;
-                            $$;
-                        `
-                    });
-                    
-                    if (createError) {
-                        console.error('Error creating exec_sql function:', createError);
-                        return false;
-                    }
-                    
-                    console.log('exec_sql function created successfully');
-                }
-                
-                return true;
-            } catch (error) {
-                console.error('Error in createExecSqlFunction:', error);
-                return false;
-            }
-        }
-
-        // Initialize the database functions when the app loads
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAuthState();
-            initializeDatabase();
-            fetchProducts();
-            updateCartCount();
-            setupEventListeners();
-            
-            // Initialize database functions
-            createExecSqlFunction().then(() => {
-                createOrderItemsFunction();
-            });
         }
 
         async function handleLogout() {
