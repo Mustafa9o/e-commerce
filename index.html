@@ -3484,33 +3484,24 @@ async function handleCheckout(e) {
     if (errorElement) errorElement.textContent = '';
     
     try {
-        // Calculate prices based on your schema
+        // Calculate subtotal and total
         const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const tax = 0; // You can calculate tax if needed
-        const shipping = 0; // You can modify this
-        const total = subtotal + tax + shipping;
+        const shipping = 0; // You can modify this if you have shipping costs
+        const total = subtotal + shipping;
         
-        // Generate order number
+        // Generate order number (timestamp + random number)
         const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         
         console.log('Creating order with data:', {
             user_id: currentUser.id,
             order_number: orderNumber,
             subtotal: subtotal,
-            tax: tax,
-            shipping: shipping,
             total: total,
             status: 'pending',
-            payment_method: paymentMethod,
-            currency: 'SAR',
-            delivery_name: name,
-            delivery_phone: phone,
-            delivery_address: address,
-            delivery_city: city,
-            delivery_postal: postal
+            payment_method: paymentMethod
         });
         
-        // Create order using your actual schema
+        // Create order using the correct field names based on the schema
         const orderData = {
             user_id: currentUser.id,
             order_number: orderNumber,
@@ -3523,12 +3514,10 @@ async function handleCheckout(e) {
             delivery_city: city,
             delivery_postal: postal,
             subtotal: subtotal,
-            tax: tax,
-            shipping: shipping,
             total: total
         };
         
-        // Insert the order
+        // Use the Supabase client to insert the order
         const { data: orderDataResult, error: orderError } = await supabase
             .from('orders')
             .insert([orderData])
@@ -3541,71 +3530,49 @@ async function handleCheckout(e) {
         
         console.log('Order created successfully:', orderDataResult);
         
-        // Create order items - FIXED: Use simpler approach to avoid trigger issues
+        // Create order items one by one to avoid trigger issues
         const orderId = orderDataResult[0].id;
         let itemsCreated = 0;
         
         for (const item of cart) {
             try {
-                // Use minimal data for order items to avoid trigger conflicts
-                const orderItemData = {
-                    order_id: orderId,
-                    product_id: item.id,
-                    quantity: item.quantity,
-                    unit_price: item.price,
-                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn
-                };
+                // Use the REST API directly to avoid trigger issues
+                const response = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        product_id: item.id,
+                        quantity: item.quantity,
+                        unit_price: item.price,
+                        product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                    })
+                });
                 
-                console.log('Creating order item:', orderItemData);
-                
-                const { error: itemError } = await supabase
-                    .from('order_items')
-                    .insert([orderItemData]);
-                
-                if (itemError) {
-                    console.error('Error creating order item:', itemError);
-                    
-                    // Try alternative approach if first attempt fails
-                    try {
-                        // Use fetch API as fallback
-                        const response = await fetch(`${supabaseUrl}/rest/v1/order_items`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': supabaseKey,
-                                'Authorization': `Bearer ${supabaseKey}`,
-                                'Prefer': 'return=minimal'
-                            },
-                            body: JSON.stringify(orderItemData)
-                        });
-                        
-                        if (!response.ok) {
-                            throw new Error('REST API failed');
-                        }
-                        
-                        console.log('Order item created successfully with REST API');
-                        itemsCreated++;
-                    } catch (restError) {
-                        console.error('REST API also failed:', restError);
-                        // Continue with next item
-                        continue;
-                    }
-                } else {
-                    console.log('Order item created successfully');
-                    itemsCreated++;
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('REST API error for item:', errorData);
+                    throw new Error(errorData.message || 'Failed to create order item with REST API');
                 }
+                
+                console.log('Order item created successfully with REST API');
+                itemsCreated++;
             } catch (itemError) {
                 console.error('Failed to create order item:', itemError);
-                // Continue with next item
-                continue;
+                // Continue with other items even if this one fails
             }
         }
         
-        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
-        
         if (itemsCreated === 0) {
-            throw new Error('Failed to create any order items. Please try again.');
+            throw new Error('Failed to create any order items');
         }
+        
+        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
         
         // Clear cart
         cart = [];
@@ -3623,23 +3590,43 @@ async function handleCheckout(e) {
     } catch (error) {
         console.error('Checkout error:', error);
         
-        let errorMessage = 'حدث خطأ أثناء إتمام الطلب. يرجى المحاولة مرة أخرى.';
+        // Display detailed error message
+        let errorMessage = '';
         
-        if (error.message.includes('total')) {
-            errorMessage = 'حدث خطأ في حساب الإجمالي. يرجى التأكد من أسعار المنتجات.';
-        } else if (error.message.includes('order_items')) {
-            errorMessage = 'حدث خطأ في إضافة المنتجات إلى الطلب. يرجى المحاولة مرة أخرى.';
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-            errorMessage = 'حدث خطأ في الاتصال بالخادم. يرجى التحقق من اتصال الإنترنت والمحاولة مرة أخرى.';
+        if (error.message) {
+            if (error.message.includes('record "new" has no field "total"')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. يتم العمل على إصلاح هذه المشكلة.';
+            } else if (error.message.includes('column "total" of relation "orders" does not exist')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: حقل الإجمالي غير موجود. يتم العمل على إصلاح هذه المشكلة.';
+            } else if (error.message.includes('column') && error.message.includes('does not exist')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: عمود غير موجود. يرجى التواصل مع الدعم الفني.';
+            } else if (error.message.includes('ambiguous')) {
+                errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. يتم العمل على إصلاح هذه المشكلة.';
+            } else if (error.message.includes('null value in column')) {
+                errorMessage = 'حدث خطأ: حقل إلزامي فارغ. يرجى التأكد من إدخال جميع البيانات المطلوبة.';
+            } else if (error.message.includes('duplicate key')) {
+                errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
+            } else if (error.message.includes('Failed to create any order items')) {
+                errorMessage = 'حدث خطأ: لم يتمكن النظام من إنشاء عناصر الطلب. يرجى المحاولة مرة أخرى لاحقاً.';
+            } else {
+                errorMessage = `حدث خطأ: ${error.message}`;
+            }
+        } else if (error.code) {
+            errorMessage = `حدث خطأ (كود ${error.code}): يرجى التواصل مع الدعم الفني.`;
+        } else {
+            errorMessage = 'حدث خطأ غير معروف في قاعدة البيانات. يرجى المحاولة مرة أخرى لاحقاً.';
         }
         
         if (errorElement) {
             errorElement.textContent = errorMessage;
         }
         
+        // Show notification
         showNotification(errorMessage, 'error');
     }
-}        async function handleLogout() {
+}
+        
+        async function handleLogout() {
             try {
                 await supabase.auth.signOut();
                 currentUser = null;
