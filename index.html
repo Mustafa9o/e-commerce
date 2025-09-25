@@ -2003,7 +2003,7 @@
                     <div class="about-container">
                         <div class="about-content">
                             <h3>عن متجرنا</h3>
-                            <p>متجر إلكتروني رائد في المملكة العربية السعودية، يقدم أحدث المنتجات بأفضل الأسعار. نحن نسعى لتوفير تجربة تسوق مميزة لعملائنا من خلال مجموعة واسعة من المنتجات عالية الجودة وخدمة عملاء استثنائية.</p>
+                            <p>متجر إلكتروني رائد في المملكة العربية السعودية، يقدم أحدث المنتجات بأفضل الأسعار وجودة عالية. نحن نسعى لتوفير تجربة تسوق مميزة لعملائنا من خلال مجموعة واسعة من المنتجات عالية الجودة وخدمة عملاء استثنائية.</p>
                             
                             <h3>رؤيتنا</h3>
                             <p>أن نكون الخيار الأول للتسوق الإلكتروني في المنطقة، من خلال تقديم منتجات مبتكرة وخدمة عملاء مميزة.</p>
@@ -2702,42 +2702,43 @@
             }
         }
 
-        // Fetch orders from Supabase
-     // Update your fetchOrders function to use the backup table
-async function fetchOrders() {
-    if (!currentUser) return;
-    
-    try {
-        const { data: orders, error: ordersError } = await supabase
-            .from('orders')
-            .select('*')
-            .eq('user_id', currentUser.id)
-            .order('created_at', { ascending: false });
-        
-        if (ordersError) throw ordersError;
-        
-        // Fetch order items from the backup table for each order
-        for (const order of orders) {
-            const { data: items, error: itemsError } = await supabase
-                .from('order_items_backup')
-                .select('*')
-                .eq('order_id', order.id);
+        // Fetch orders from Supabase - FIXED VERSION
+        async function fetchOrders() {
+            if (!currentUser) return;
             
-            if (itemsError) {
-                console.error('Error fetching order items:', itemsError);
-                order.items = [];
-            } else {
-                order.items = items || [];
+            try {
+                const { data: ordersData, error: ordersError } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: false });
+                
+                if (ordersError) throw ordersError;
+                
+                // Process orders to ensure they have the correct field names
+                const processedOrders = ordersData.map(order => {
+                    // Handle different schema versions
+                    const processedOrder = {
+                        ...order,
+                        // Ensure we have the necessary fields
+                        subtotal: order.subtotal || order.order_subtotal || 0,
+                        total: order.total || order.order_total || 0
+                    };
+                    return processedOrder;
+                });
+                
+                // Update the orders state
+                orders = processedOrders;
+                
+                // Render the orders
+                renderOrders();
+                
+            } catch (error) {
+                console.error('Error fetching orders:', error.message);
+                showNotification('حدث خطأ في جلب الطلبات', 'error');
             }
         }
-        
-        // Update your state or UI with the orders and items
-        renderOrders(orders);
-    } catch (error) {
-        console.error('Error fetching orders:', error.message);
-        showNotification('حدث خطأ في جلب الطلبات', 'error');
-    }
-}
+
         // Fetch user profile from Supabase
         async function fetchUserProfile() {
             if (!currentUser) return;
@@ -2848,7 +2849,7 @@ async function fetchOrders() {
             });
         }
 
-        // Render orders to the page
+        // Render orders to the page - FIXED VERSION
         function renderOrders() {
             const ordersList = document.getElementById('orders-list');
             if (!ordersList) return;
@@ -2873,36 +2874,10 @@ async function fetchOrders() {
                 const orderItem = document.createElement('div');
                 orderItem.className = 'order-item';
                 
-                // Build price details HTML based on schema
-                let priceDetails = '';
-                
-                if (dbSchema === 'new') {
-                    // New schema: order_subtotal, order_total
-                    if (order.order_subtotal !== undefined) {
-                        priceDetails = `
-                            <div class="order-price-details">
-                                <div class="order-subtotal">المجموع الفرعي: ${order.order_subtotal.toFixed(2)} ر.س</div>
-                                <div class="order-shipping">الشحن: ${(order.order_total - order.order_subtotal).toFixed(2)} ر.س</div>
-                                <div class="order-total-display">المجموع: ${order.order_total.toFixed(2)} ر.س</div>
-                            </div>
-                        `;
-                    } else {
-                        priceDetails = `<div class="order-total">${order.order_total.toFixed(2)} ر.س</div>`;
-                    }
-                } else {
-                    // Old schema: subtotal, total
-                    if (order.subtotal !== undefined) {
-                        priceDetails = `
-                            <div class="order-price-details">
-                                <div class="order-subtotal">المجموع الفرعي: ${order.subtotal.toFixed(2)} ر.س</div>
-                                <div class="order-shipping">الشحن: ${(order.total - order.subtotal).toFixed(2)} ر.س</div>
-                                <div class="order-total-display">المجموع: ${order.total.toFixed(2)} ر.س</div>
-                            </div>
-                        `;
-                    } else {
-                        priceDetails = `<div class="order-total">${order.total.toFixed(2)} ر.س</div>`;
-                    }
-                }
+                // Get the correct subtotal and total based on schema
+                const subtotal = order.subtotal || order.order_subtotal || 0;
+                const total = order.total || order.order_total || 0;
+                const shipping = total - subtotal;
                 
                 orderItem.innerHTML = `
                     <div class="order-info">
@@ -2910,7 +2885,11 @@ async function fetchOrders() {
                         <div class="order-date">${formatDate(order.created_at)}</div>
                     </div>
                     <div>
-                        ${priceDetails}
+                        <div class="order-price-details">
+                            <div class="order-subtotal">المجموع الفرعي: ${subtotal.toFixed(2)} ر.س</div>
+                            <div class="order-shipping">الشحن: ${shipping.toFixed(2)} ر.س</div>
+                            <div class="order-total-display">المجموع: ${total.toFixed(2)} ر.س</div>
+                        </div>
                         <span class="order-status ${statusClass}">${statusText}</span>
                     </div>
                 `;
@@ -2949,7 +2928,7 @@ async function fetchOrders() {
             }
         }
 
-        // Setup event listeners
+        // Setup event listeners - FIXED VERSION
         function setupEventListeners() {
             // Language switcher
             document.querySelectorAll('.lang-btn').forEach(button => {
@@ -3024,17 +3003,18 @@ async function fetchOrders() {
                 });
             });
 
-            // Add to cart buttons (event delegation)
+            // Add to cart buttons (event delegation) - FIXED VERSION
             document.addEventListener('click', function(e) {
-                if (e.target.classList.contains('add-to-cart') || e.target.closest('.add-to-cart')) {
-                    const btn = e.target.classList.contains('add-to-cart') ? e.target : e.target.closest('.add-to-cart');
-                    const productId = parseInt(btn.getAttribute('data-id'));
+                // Check if clicked on add to cart button
+                const addToCartBtn = e.target.closest('.add-to-cart');
+                if (addToCartBtn) {
+                    e.preventDefault(); // Prevent default behavior
+                    e.stopPropagation(); // Stop event bubbling
+                    
+                    const productId = parseInt(addToCartBtn.getAttribute('data-id'));
                     addToCart(productId);
                 }
-            });
-
-            // Product card click (for details)
-            document.addEventListener('click', function(e) {
+                
                 // Check if clicked on product card (but not on buttons)
                 const productCard = e.target.closest('.product-card');
                 if (productCard && !e.target.closest('.add-to-cart') && !e.target.closest('.product-actions')) {
@@ -3480,318 +3460,305 @@ async function fetchOrders() {
         }
 
         // Handle checkout form submission - FIXED VERSION
-      // Handle checkout form submission - FIXED VERSION
-// Handle checkout form submission - FIXED VERSION
-// Handle checkout form submission - FIXED VERSION
-// Handle checkout form submission - FIXED for your database schema
-// Handle checkout form submission - FIXED VERSION
-// Handle checkout form submission - TRIGGER-COMPATIBLE VERSION
-// Handle checkout form submission - CORRECTED COLUMN NAMES VERSION
-// Handle checkout form submission - AFTER DELETING TRIGGERS
-// Handle checkout form submission - FIXED VERSION
-// Handle checkout form submission - UPDATED VERSION
+        async function handleCheckout(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('checkout-name').value;
+            const phone = document.getElementById('checkout-phone').value;
+            const address = document.getElementById('checkout-address').value;
+            const city = document.getElementById('checkout-city').value;
+            const postal = document.getElementById('checkout-postal').value;
+            const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
+            const errorElement = document.getElementById('checkout-error');
+            
+            // Reset error message
+            if (errorElement) errorElement.textContent = '';
+            
+            try {
+                // Calculate subtotal and total
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                const shipping = 0; // You can modify this if you have shipping costs
+                const tax = 0; // You can modify this if you have tax
+                const total = subtotal + shipping + tax;
+                
+                // Generate order number (timestamp + random number)
+                const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                
+                console.log('Creating order with data:', {
+                    user_id: currentUser.id,
+                    order_number: orderNumber,
+                    subtotal: subtotal,
+                    total: total,
+                    status: 'pending',
+                    payment_method: paymentMethod
+                });
+                
+                // Create order using the correct field names based on the schema
+                const orderData = {
+                    user_id: currentUser.id,
+                    order_number: orderNumber,
+                    status: 'pending',
+                    payment_method: paymentMethod,
+                    currency: 'SAR',
+                    delivery_name: name,
+                    delivery_phone: phone,
+                    delivery_address: address,
+                    delivery_city: city,
+                    delivery_postal: postal,
+                    // Include the required fields
+                    subtotal: subtotal,
+                    tax: tax,
+                    shipping: shipping,
+                    total: total
+                };
+                
+                // Use the Supabase client to insert the order
+                const { data: orderDataResult, error: orderError } = await supabase
+                    .from('orders')
+                    .insert([orderData])
+                    .select();
+                
+                if (orderError) {
+                    console.error('Order creation error:', orderError);
+                    throw new Error(orderError.message || 'Failed to create order');
+                }
+                
+                console.log('Order created successfully:', orderDataResult);
+                
+                // Get the order ID
+                const orderId = orderDataResult[0].id;
+                
+                // Try to create order items using the backup table
+                try {
+                    // Prepare items for the function
+                    const itemsForFunction = cart.map(item => ({
+                        product_id: item.id,
+                        product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
+                        quantity: item.quantity,
+                        unit_price: item.price
+                    }));
+                    
+                    // Use the function to insert order items into the backup table
+                    const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_backup', {
+                        p_order_id: orderId,
+                        p_items: itemsForFunction
+                    });
+                    
+                    if (itemsError) {
+                        console.error('Error creating order items with backup table:', itemsError);
+                        throw itemsError;
+                    }
+                    
+                    console.log('Order items created successfully with backup table:', itemsData);
+                } catch (itemsError) {
+                    console.error('Failed to create order items with backup table:', itemsError);
+                    
+                    // Fallback: Store order items in local storage for later processing
+                    const pendingOrderItems = {
+                        order_id: orderId,
+                        items: cart.map(item => ({
+                            product_id: item.id,
+                            quantity: item.quantity,
+                            unit_price: item.price,
+                            product_name: currentLanguage === 'ar' ? item.name : item.nameEn
+                        })),
+                        created_at: new Date().toISOString()
+                    };
+                    
+                    localStorage.setItem(`pending_order_items_${orderId}`, JSON.stringify(pendingOrderItems));
+                    
+                    // Show notification about order items being stored locally
+                    showNotification('تم إنشاء طلبك بنجاح. سيتم معالجة عناصر الطلب قريباً.', 'info');
+                }
+                
+                // Clear cart
+                cart = [];
+                localStorage.setItem('cart', JSON.stringify(cart));
+                updateCartCount();
+                
+                // Show success modal
+                document.getElementById('order-number').textContent = orderNumber;
+                document.getElementById('checkout-modal').style.display = 'none';
+                document.getElementById('order-success-modal').style.display = 'flex';
+                
+                // Refresh orders
+                fetchOrders();
+                
+            } catch (error) {
+                console.error('Checkout error:', error);
+                
+                // Display detailed error message
+                let errorMessage = '';
+                
+                if (error.message) {
+                    if (error.message.includes('column reference "subtotal" is ambiguous')) {
+                        errorMessage = 'حدث خطأ في قاعدة البيانات: تعارض في أسماء الأعمدة. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+                    } else if (error.message.includes('null value in column "product_name"')) {
+                        errorMessage = 'حدث خطأ: اسم المنتج مطلوب. يرجى التأكد من أن جميع المنتجات في سلة التسوق لها أسماء صحيحة.';
+                    } else if (error.message.includes('null value in column')) {
+                        // Extract column name from error message
+                        const match = error.message.match(/null value in column "([^"]+)"/);
+                        const columnName = match ? match[1] : 'حقل';
+                        errorMessage = `حدث خطأ: الحقل "${columnName}" مطلوب. يرجى التأكد من إدخال جميع البيانات المطلوبة.`;
+                    } else if (error.message.includes('column "total" does not exist')) {
+                        errorMessage = 'حدث خطأ في قاعدة البيانات: عمود الإجمالي غير موجود. يرجى التواصل مع الدعم الفني لإصلاح المشكلة.';
+                    } else if (error.message.includes('record "new" has no field "total"')) {
+                        errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+                    } else if (error.message.includes('column') && error.message.includes('does not exist')) {
+                        errorMessage = 'حدث خطأ في قاعدة البيانات: عمود غير موجود. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+                    } else if (error.message.includes('ambiguous')) {
+                        errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+                    } else if (error.message.includes('duplicate key')) {
+                        errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
+                    } else if (error.message.includes('permission denied')) {
+                        errorMessage = 'حدث خطأ في صلاحيات قاعدة البيانات. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+                    } else {
+                        errorMessage = `حدث خطأ: ${error.message}`;
+                    }
+                } else if (error.code) {
+                    errorMessage = `حدث خطأ (كود ${error.code}): يرجى التواصل مع الدعم الفني.`;
+                } else {
+                    errorMessage = 'حدث خطأ غير معروف في قاعدة البيانات. يرجى المحاولة مرة أخرى لاحقاً.';
+                }
+                
+                if (errorElement) {
+                    errorElement.textContent = errorMessage;
+                }
+                
+                // Show notification
+                showNotification(errorMessage, 'error');
+            }
+        }
 
-    // Handle checkout form submission - NO TRIGGERS VERSION
-// Handle checkout form submission - NEW TABLE VERSION
-// Handle checkout form submission - SIMPLER VERSION
-// Handle checkout form submission - BACKUP TABLE VERSION
-async function handleCheckout(e) {
-    e.preventDefault();
-    
-    const name = document.getElementById('checkout-name').value;
-    const phone = document.getElementById('checkout-phone').value;
-    const address = document.getElementById('checkout-address').value;
-    const city = document.getElementById('checkout-city').value;
-    const postal = document.getElementById('checkout-postal').value;
-    const paymentMethod = document.querySelector('input[name="payment-method"]:checked').value;
-    const errorElement = document.getElementById('checkout-error');
-    
-    // Reset error message
-    if (errorElement) errorElement.textContent = '';
-    
-    try {
-        // Calculate subtotal and total
-        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const shipping = 0; // You can modify this if you have shipping costs
-        const tax = 0; // You can modify this if you have tax
-        const total = subtotal + shipping + tax;
-        
-        // Generate order number (timestamp + random number)
-        const orderNumber = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        
-        console.log('Creating order with data:', {
-            user_id: currentUser.id,
-            order_number: orderNumber,
-            subtotal: subtotal,
-            total: total,
-            status: 'pending',
-            payment_method: paymentMethod
-        });
-        
-        // Create order using the correct field names based on the schema
-        const orderData = {
-            user_id: currentUser.id,
-            order_number: orderNumber,
-            status: 'pending',
-            payment_method: paymentMethod,
-            currency: 'SAR',
-            delivery_name: name,
-            delivery_phone: phone,
-            delivery_address: address,
-            delivery_city: city,
-            delivery_postal: postal,
-            // Include the required fields
-            subtotal: subtotal,
-            tax: tax,
-            shipping: shipping,
-            total: total
-        };
-        
-        // Use the Supabase client to insert the order
-        const { data: orderDataResult, error: orderError } = await supabase
-            .from('orders')
-            .insert([orderData])
-            .select();
-        
-        if (orderError) {
-            console.error('Order creation error:', orderError);
-            throw new Error(orderError.message || 'Failed to create order');
-        }
-        
-        console.log('Order created successfully:', orderDataResult);
-        
-        // Get the order ID
-        const orderId = orderDataResult[0].id;
-        
-        // Try to create order items using the backup table
-        try {
-            // Prepare items for the function
-            const itemsForFunction = cart.map(item => ({
-                product_id: item.id,
-                product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
-                quantity: item.quantity,
-                unit_price: item.price
-            }));
-            
-            // Use the function to insert order items into the backup table
-            const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_backup', {
-                p_order_id: orderId,
-                p_items: itemsForFunction
-            });
-            
-            if (itemsError) {
-                console.error('Error creating order items with backup table:', itemsError);
-                throw itemsError;
-            }
-            
-            console.log('Order items created successfully with backup table:', itemsData);
-        } catch (itemsError) {
-            console.error('Failed to create order items with backup table:', itemsError);
-            
-            // Fallback: Store order items in local storage for later processing
-            const pendingOrderItems = {
-                order_id: orderId,
-                items: cart.map(item => ({
-                    product_id: item.id,
-                    quantity: item.quantity,
-                    unit_price: item.price,
-                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn
-                })),
-                created_at: new Date().toISOString()
-            };
-            
-            localStorage.setItem(`pending_order_items_${orderId}`, JSON.stringify(pendingOrderItems));
-            
-            // Show notification about order items being stored locally
-            showNotification('تم إنشاء طلبك بنجاح. سيتم معالجة عناصر الطلب قريباً.', 'info');
-        }
-        
-        // Clear cart
-        cart = [];
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartCount();
-        
-        // Show success modal
-        document.getElementById('order-number').textContent = orderNumber;
-        document.getElementById('checkout-modal').style.display = 'none';
-        document.getElementById('order-success-modal').style.display = 'flex';
-        
-        // Refresh orders
-        fetchOrders();
-        
-    } catch (error) {
-        console.error('Checkout error:', error);
-        
-        // Display detailed error message
-        let errorMessage = '';
-        
-        if (error.message) {
-            if (error.message.includes('column reference "subtotal" is ambiguous')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: تعارض في أسماء الأعمدة. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('null value in column "product_name"')) {
-                errorMessage = 'حدث خطأ: اسم المنتج مطلوب. يرجى التأكد من أن جميع المنتجات في سلة التسوق لها أسماء صحيحة.';
-            } else if (error.message.includes('null value in column')) {
-                // Extract column name from error message
-                const match = error.message.match(/null value in column "([^"]+)"/);
-                const columnName = match ? match[1] : 'حقل';
-                errorMessage = `حدث خطأ: الحقل "${columnName}" مطلوب. يرجى التأكد من إدخال جميع البيانات المطلوبة.`;
-            } else if (error.message.includes('column "total" does not exist')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: عمود الإجمالي غير موجود. يرجى التواصل مع الدعم الفني لإصلاح المشكلة.';
-            } else if (error.message.includes('record "new" has no field "total"')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: هناك مشكلة في إنشاء عناصر الطلب. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('column') && error.message.includes('does not exist')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: عمود غير موجود. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('ambiguous')) {
-                errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else if (error.message.includes('duplicate key')) {
-                errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
-            } else if (error.message.includes('permission denied')) {
-                errorMessage = 'حدث خطأ في صلاحيات قاعدة البيانات. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
-            } else {
-                errorMessage = `حدث خطأ: ${error.message}`;
-            }
-        } else if (error.code) {
-            errorMessage = `حدث خطأ (كود ${error.code}): يرجى التواصل مع الدعم الفني.`;
-        } else {
-            errorMessage = 'حدث خطأ غير معروف في قاعدة البيانات. يرجى المحاولة مرة أخرى لاحقاً.';
-        }
-        
-        if (errorElement) {
-            errorElement.textContent = errorMessage;
-        }
-        
-        // Show notification
-        showNotification(errorMessage, 'error');
-    }
-}
         // Function to create the database function if it doesn't exist
-async function createOrderItemsFunction() {
-    try {
-        // Create the function to insert order items without triggers
-        const { error } = await supabase.rpc('exec_sql', {
-            sql: `
-                CREATE OR REPLACE FUNCTION create_order_items_simple(
-                    p_order_id bigint,
-                    p_items text
-                )
-                RETURNS boolean
-                LANGUAGE plpgsql
-                SECURITY DEFINER
-                AS $$
-                DECLARE
-                    items_array jsonb;
-                    item record;
-                    result boolean := true;
-                BEGIN
-                    -- Parse the JSON string
-                    items_array := p_items::jsonb;
-                    
-                    -- Disable all triggers on the order_items table
-                    ALTER TABLE order_items DISABLE TRIGGER ALL;
-                    
-                    -- Insert each item
-                    FOR item IN SELECT * FROM jsonb_to_recordset(items_array) AS x(
-                        product_id bigint,
-                        quantity integer,
-                        unit_price numeric,
-                        product_name text
-                    ) LOOP
+        async function createOrderItemsFunction() {
+            try {
+                // Create the function to insert order items without triggers
+                const { error } = await supabase.rpc('exec_sql', {
+                    sql: `
+                        CREATE OR REPLACE FUNCTION create_order_items_simple(
+                            p_order_id bigint,
+                            p_items text
+                        )
+                        RETURNS boolean
+                        LANGUAGE plpgsql
+                        SECURITY DEFINER
+                        AS $$
+                        DECLARE
+                            items_array jsonb;
+                            item record;
+                            result boolean := true;
                         BEGIN
-                            INSERT INTO order_items (
-                                order_id,
-                                product_id,
-                                quantity,
-                                unit_price,
-                                product_name,
-                                created_at
-                            ) VALUES (
-                                p_order_id,
-                                item.product_id,
-                                item.quantity,
-                                item.unit_price,
-                                item.product_name,
-                                NOW()
-                            );
-                        EXCEPTION WHEN OTHERS THEN
-                            result := false;
-                            RAISE NOTICE 'Error inserting order item: %', SQLERRM;
+                            -- Parse the JSON string
+                            items_array := p_items::jsonb;
+                            
+                            -- Disable all triggers on the order_items table
+                            ALTER TABLE order_items DISABLE TRIGGER ALL;
+                            
+                            -- Insert each item
+                            FOR item IN SELECT * FROM jsonb_to_recordset(items_array) AS x(
+                                product_id bigint,
+                                quantity integer,
+                                unit_price numeric,
+                                product_name text
+                            ) LOOP
+                                BEGIN
+                                    INSERT INTO order_items (
+                                        order_id,
+                                        product_id,
+                                        quantity,
+                                        unit_price,
+                                        product_name,
+                                        created_at
+                                    ) VALUES (
+                                        p_order_id,
+                                        item.product_id,
+                                        item.quantity,
+                                        item.unit_price,
+                                        item.product_name,
+                                        NOW()
+                                    );
+                                EXCEPTION WHEN OTHERS THEN
+                                    result := false;
+                                    RAISE NOTICE 'Error inserting order item: %', SQLERRM;
+                                END;
+                            END LOOP;
+                            
+                            -- Re-enable triggers
+                            ALTER TABLE order_items ENABLE TRIGGER ALL;
+                            
+                            RETURN result;
                         END;
-                    END LOOP;
-                    
-                    -- Re-enable triggers
-                    ALTER TABLE order_items ENABLE TRIGGER ALL;
-                    
-                    RETURN result;
-                END;
-                $$;
-            `
-        });
-        
-        if (error) {
-            console.error('Error creating order_items function:', error);
-            return false;
-        }
-        
-        console.log('Order items function created successfully');
-        return true;
-    } catch (error) {
-        console.error('Error in createOrderItemsFunction:', error);
-        return false;
-    }
-}
-
-// Function to execute SQL (if not already available)
-async function createExecSqlFunction() {
-    try {
-        const { error } = await supabase.rpc('exec_sql', {
-            sql: 'SELECT 1;'
-        });
-        
-        if (error && error.message.includes('function exec_sql(text) does not exist')) {
-            // Create the exec_sql function
-            const { error: createError } = await supabase.rpc('exec_sql', {
-                sql: `
-                    CREATE OR REPLACE FUNCTION exec_sql(sql text)
-                    RETURNS void
-                    LANGUAGE plpgsql
-                    SECURITY DEFINER
-                    AS $$
-                    BEGIN
-                      EXECUTE sql;
-                    END;
-                    $$;
-                `
-            });
-            
-            if (createError) {
-                console.error('Error creating exec_sql function:', createError);
+                        $$;
+                    `
+                });
+                
+                if (error) {
+                    console.error('Error creating order_items function:', error);
+                    return false;
+                }
+                
+                console.log('Order items function created successfully');
+                return true;
+            } catch (error) {
+                console.error('Error in createOrderItemsFunction:', error);
                 return false;
             }
-            
-            console.log('exec_sql function created successfully');
         }
-        
-        return true;
-    } catch (error) {
-        console.error('Error in createExecSqlFunction:', error);
-        return false;
-    }
-}
 
-// Initialize the database functions when the app loads
-document.addEventListener('DOMContentLoaded', function() {
-    checkAuthState();
-    initializeDatabase();
-    fetchProducts();
-    updateCartCount();
-    setupEventListeners();
-    
-    // Initialize database functions
-    createExecSqlFunction().then(() => {
-        createOrderItemsFunction();
-    });
-});
-     async function handleLogout() {
+        // Function to execute SQL (if not already available)
+        async function createExecSqlFunction() {
+            try {
+                const { error } = await supabase.rpc('exec_sql', {
+                    sql: 'SELECT 1;'
+                });
+                
+                if (error && error.message.includes('function exec_sql(text) does not exist')) {
+                    // Create the exec_sql function
+                    const { error: createError } = await supabase.rpc('exec_sql', {
+                        sql: `
+                            CREATE OR REPLACE FUNCTION exec_sql(sql text)
+                            RETURNS void
+                            LANGUAGE plpgsql
+                            SECURITY DEFINER
+                            AS $$
+                            BEGIN
+                              EXECUTE sql;
+                            END;
+                            $$;
+                        `
+                    });
+                    
+                    if (createError) {
+                        console.error('Error creating exec_sql function:', createError);
+                        return false;
+                    }
+                    
+                    console.log('exec_sql function created successfully');
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error in createExecSqlFunction:', error);
+                return false;
+            }
+        }
+
+        // Initialize the database functions when the app loads
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthState();
+            initializeDatabase();
+            fetchProducts();
+            updateCartCount();
+            setupEventListeners();
+            
+            // Initialize database functions
+            createExecSqlFunction().then(() => {
+                createOrderItemsFunction();
+            });
+        }
+
+        async function handleLogout() {
             try {
                 await supabase.auth.signOut();
                 currentUser = null;
@@ -3847,16 +3814,19 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('product-modal').style.display = 'flex';
         }
 
-        // Add product to cart
+        // Add product to cart - FIXED VERSION
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
             
-            const existingItem = cart.find(item => item.id === productId);
+            // Check if item already exists in cart
+            const existingItemIndex = cart.findIndex(item => item.id === productId);
             
-            if (existingItem) {
-                existingItem.quantity += 1;
+            if (existingItemIndex !== -1) {
+                // Item already exists, just increase quantity
+                cart[existingItemIndex].quantity += 1;
             } else {
+                // Item doesn't exist, add it to cart
                 cart.push({
                     id: product.id,
                     name: product.name_ar,
@@ -3867,7 +3837,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
+            // Save cart to localStorage
             localStorage.setItem('cart', JSON.stringify(cart));
+            
+            // Update cart count
             updateCartCount();
             
             // Show success message
@@ -4011,30 +3984,45 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Update item quantity in cart
+        // Update item quantity in cart - FIXED VERSION
         function updateQuantity(productId, change, setExact = false) {
-            const item = cart.find(item => item.id === productId);
+            const itemIndex = cart.findIndex(item => item.id === productId);
             
-            if (item) {
+            if (itemIndex !== -1) {
                 if (setExact) {
-                    item.quantity = change > 0 ? change : 1;
+                    // Set exact quantity
+                    cart[itemIndex].quantity = Math.max(1, change);
                 } else {
-                    item.quantity += change;
-                    if (item.quantity < 1) item.quantity = 1;
+                    // Increase/decrease quantity
+                    cart[itemIndex].quantity = Math.max(1, cart[itemIndex].quantity + change);
                 }
                 
+                // Save cart to localStorage
                 localStorage.setItem('cart', JSON.stringify(cart));
+                
+                // Update cart count
                 updateCartCount();
+                
+                // Re-render cart items
                 renderCartItems();
             }
         }
 
-        // Remove item from cart
+        // Remove item from cart - FIXED VERSION
         function removeFromCart(productId) {
+            // Filter out the item with the given ID
             cart = cart.filter(item => item.id !== productId);
+            
+            // Save cart to localStorage
             localStorage.setItem('cart', JSON.stringify(cart));
+            
+            // Update cart count
             updateCartCount();
+            
+            // Re-render cart items
             renderCartItems();
+            
+            // Show notification
             showNotification(translations[currentLanguage].productRemoved, 'info');
         }
 
