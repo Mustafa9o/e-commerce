@@ -2058,19 +2058,15 @@
                 
                 if (customersError) throw customersError;
                 
-                // استخدام العمود الصحيح order_items.unit_price بدلاً من price
-                const { data: revenueData, error: revenueError } = await supabase
-                    .from('order_items')
-                    .select('unit_price, quantity');
-                
-                if (revenueError) throw revenueError;
+                // Calculate revenue from orders directly
+                const revenue = ordersData.reduce((sum, order) => sum + (order.total || 0), 0);
                 
                 // Calculate stats
                 stats = {
                     productsCount: productsData.length,
                     ordersCount: ordersData.length,
                     customersCount: customersData.length,
-                    revenue: revenueData.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)
+                    revenue: revenue
                 };
                 
                 // Render stats
@@ -2189,7 +2185,7 @@
                     <td>#${order.order_number || order.id}</td>
                     <td>${order.profiles?.full_name || 'Unknown'}</td>
                     <td>${formatDate(order.created_at)}</td>
-                    <td>${order.total} ر.س</td>
+                    <td>${order.total || 0} ر.س</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
                         <button class="btn btn-primary view-order" data-id="${order.id}">
@@ -2355,7 +2351,7 @@
                     <td>#${order.order_number || order.id}</td>
                     <td>${order.profiles?.full_name || 'Unknown'}</td>
                     <td>${formatDate(order.created_at)}</td>
-                    <td>${order.total} ر.س</td>
+                    <td>${order.total || 0} ر.س</td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                     <td>
                         <div class="btn-group">
@@ -2886,18 +2882,45 @@
                 
                 console.log("Customer data:", customer);
                 
-                // Get order items
-                const { data: orderItems, error: orderItemsError } = await supabase
-                    .from('order_items')
-                    .select(`
-                        *,
-                        products:product_id (name_ar, name_en, image_url)
-                    `)
-                    .eq('order_id', orderId);
+                // Check if order_items table exists and fetch order items
+                let orderItems = [];
+                try {
+                    const { data: items, error: itemsError } = await supabase
+                        .from('order_items')
+                        .select('*')
+                        .eq('order_id', orderId);
+                    
+                    if (itemsError) {
+                        console.log("Error fetching order_items, trying alternative approach:", itemsError.message);
+                        // If order_items table doesn't exist or there's an error, we'll create a fallback
+                        orderItems = [];
+                    } else {
+                        orderItems = items || [];
+                        console.log("Order items data:", orderItems);
+                    }
+                } catch (error) {
+                    console.log("Exception when fetching order_items:", error.message);
+                    orderItems = [];
+                }
                 
-                if (orderItemsError) throw orderItemsError;
-                
-                console.log("Order items data:", orderItems);
+                // If we don't have order items, create a fallback from the order data
+                if (orderItems.length === 0) {
+                    console.log("No order items found, creating fallback from order data");
+                    
+                    // Create a fallback item based on the order total
+                    orderItems = [{
+                        id: 'fallback',
+                        order_id: orderId,
+                        product_id: null,
+                        quantity: 1,
+                        unit_price: order.total || 0,
+                        products: {
+                            name_ar: 'طلب عام',
+                            name_en: 'General Order',
+                            image_url: null
+                        }
+                    }];
+                }
                 
                 // Update modal title
                 const orderDetailsTitle = document.getElementById('order-details-title');
@@ -2907,6 +2930,24 @@
                 
                 // Populate order info
                 if (orderInfo) {
+                    // Extract shipping address from JSON if available
+                    let shippingAddress = 'N/A';
+                    if (order.shipping_address) {
+                        try {
+                            if (typeof order.shipping_address === 'string') {
+                                const addr = JSON.parse(order.shipping_address);
+                                shippingAddress = `${addr.address || ''}, ${addr.city || ''}, ${addr.postal_code || ''}`.replace(/^, |, $/g, '');
+                            } else if (typeof order.shipping_address === 'object') {
+                                shippingAddress = `${order.shipping_address.address || ''}, ${order.shipping_address.city || ''}, ${order.shipping_address.postal_code || ''}`.replace(/^, |, $/g, '');
+                            }
+                        } catch (e) {
+                            console.error("Error parsing shipping address:", e);
+                            shippingAddress = 'N/A';
+                        }
+                    } else if (order.delivery_address) {
+                        shippingAddress = order.delivery_address;
+                    }
+                    
                     orderInfo.innerHTML = `
                         <div class="order-info-item">
                             <h4>${translations[currentLanguage].orderNumber}</h4>
@@ -2934,7 +2975,7 @@
                         </div>
                         <div class="order-info-item">
                             <h4>${translations[currentLanguage].shippingAddress}</h4>
-                            <p>${order.shipping_address || 'N/A'}</p>
+                            <p>${shippingAddress}</p>
                         </div>
                         <div class="order-info-item">
                             <h4>${translations[currentLanguage].paymentMethod}</h4>
@@ -2952,10 +2993,12 @@
                     if (orderItems && orderItems.length > 0) {
                         orderItems.forEach(item => {
                             const productName = currentLanguage === 'ar' 
-                                ? item.products?.name_ar || 'Unknown' 
-                                : item.products?.name_en || 'Unknown';
+                                ? (item.products?.name_ar || 'منتج غير معروف')
+                                : (item.products?.name_en || 'Unknown Product');
                             
-                            const itemTotal = item.unit_price * item.quantity;
+                            const itemPrice = item.unit_price || 0;
+                            const itemQuantity = item.quantity || 1;
+                            const itemTotal = itemPrice * itemQuantity;
                             total += itemTotal;
                             
                             const row = document.createElement('tr');
@@ -2968,8 +3011,8 @@
                                         <span>${productName}</span>
                                     </div>
                                 </td>
-                                <td>${item.unit_price} ر.س</td>
-                                <td>${item.quantity}</td>
+                                <td>${itemPrice.toFixed(2)} ر.س</td>
+                                <td>${itemQuantity}</td>
                                 <td>${itemTotal.toFixed(2)} ر.س</td>
                             `;
                             orderItemsTbody.appendChild(row);
@@ -3112,7 +3155,7 @@
                     if (!salesByDay[date]) {
                         salesByDay[date] = 0;
                     }
-                    salesByDay[date] += order.total;
+                    salesByDay[date] += order.total || 0;
                 });
                 
                 // Create sales chart
@@ -3185,58 +3228,88 @@
                     });
                 }
                 
-                // Load top selling products - استخدام العمود الصحيح
-                const { data: topProductsData, error: topProductsError } = await supabase
-                    .from('order_items')
-                    .select(`
-                        product_id,
-                        products:product_id (name_ar, name_en),
-                        quantity,
-                        unit_price
-                    `)
-                    .order('quantity', { ascending: false })
-                    .limit(5);
-                
-                if (topProductsError) throw topProductsError;
-                
-                // Group by product
-                const productQuantities = {};
-                topProductsData.forEach(item => {
-                    const productName = currentLanguage === 'ar' 
-                        ? item.products?.name_ar || 'Unknown' 
-                        : item.products?.name_en || 'Unknown';
+                // Load top selling products
+                try {
+                    const { data: topProductsData, error: topProductsError } = await supabase
+                        .from('order_items')
+                        .select(`
+                            product_id,
+                            products:product_id (name_ar, name_en),
+                            quantity,
+                            unit_price
+                        `)
+                        .order('quantity', { ascending: false })
+                        .limit(5);
                     
-                    if (!productQuantities[productName]) {
-                        productQuantities[productName] = 0;
-                    }
-                    productQuantities[productName] += item.quantity;
-                });
-                
-                // Create top selling products chart
-                const productsCtx = document.getElementById('products-chart');
-                if (productsCtx) {
-                    new Chart(productsCtx, {
-                        type: 'bar',
-                        data: {
-                            labels: Object.keys(productQuantities),
-                            datasets: [{
-                                label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
-                                data: Object.values(productQuantities),
-                                backgroundColor: 'rgba(46, 204, 113, 0.6)',
-                                borderColor: 'rgba(46, 204, 113, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true
+                    if (topProductsError) throw topProductsError;
+                    
+                    // Group by product
+                    const productQuantities = {};
+                    topProductsData.forEach(item => {
+                        const productName = currentLanguage === 'ar' 
+                            ? item.products?.name_ar || 'Unknown' 
+                            : item.products?.name_en || 'Unknown';
+                        
+                        if (!productQuantities[productName]) {
+                            productQuantities[productName] = 0;
+                        }
+                        productQuantities[productName] += item.quantity || 0;
+                    });
+                    
+                    // Create top selling products chart
+                    const productsCtx = document.getElementById('products-chart');
+                    if (productsCtx) {
+                        new Chart(productsCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: Object.keys(productQuantities),
+                                datasets: [{
+                                    label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
+                                    data: Object.values(productQuantities),
+                                    backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                                    borderColor: 'rgba(46, 204, 113, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error loading top products:', error.message);
+                    // If order_items table doesn't exist, show empty chart
+                    const productsCtx = document.getElementById('products-chart');
+                    if (productsCtx) {
+                        new Chart(productsCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: [currentLanguage === 'ar' ? 'لا توجد بيانات' : 'No data'],
+                                datasets: [{
+                                    label: currentLanguage === 'ar' ? 'الكمية' : 'Quantity',
+                                    data: [0],
+                                    backgroundColor: 'rgba(46, 204, 113, 0.6)',
+                                    borderColor: 'rgba(46, 204, 113, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('Error loading reports:', error.message);
