@@ -3470,6 +3470,7 @@
 // Handle checkout form submission - FIXED VERSION
 // Handle checkout form submission - FIXED for your database schema
 // Handle checkout form submission - FIXED VERSION
+// Handle checkout form submission - TRIGGER-COMPATIBLE VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3538,87 +3539,47 @@ async function handleCheckout(e) {
         
         console.log('Order created successfully:', orderDataResult);
         
-        // Create order items one by one
+        // Get the order ID
         const orderId = orderDataResult[0].id;
+        
+        // Create order items with all possible fields to satisfy triggers
         let itemsCreated = 0;
         
-        // First, let's check what columns exist in the order_items table
-        try {
-            const { data: sampleItem, error: sampleError } = await supabase
-                .from('order_items')
-                .select('*')
-                .limit(1);
-            
-            if (sampleError) {
-                console.error('Error checking order_items schema:', sampleError);
-                throw new Error('Could not check order_items table schema');
-            }
-            
-            // Now create each order item with only the essential fields
-            for (const item of cart) {
-                try {
-                    // Create a minimal order item object with only the essential fields
-                    const orderItemData = {
-                        order_id: orderId,
-                        product_id: item.id,
-                        quantity: item.quantity,
-                        unit_price: item.price
-                    };
-                    
-                    // Try to create the order item
-                    const { error: itemError } = await supabase
-                        .from('order_items')
-                        .insert([orderItemData]);
-                    
-                    if (itemError) {
-                        console.error('Error creating order item:', itemError);
-                        
-                        // If there's still an error, try with different field names
-                        try {
-                            const alternativeOrderItemData = {
-                                order_id: orderId,
-                                product_id: item.id,
-                                quantity: item.quantity,
-                                price: item.price  // Try 'price' instead of 'unit_price'
-                            };
-                            
-                            const { error: altItemError } = await supabase
-                                .from('order_items')
-                                .insert([alternativeOrderItemData]);
-                            
-                            if (altItemError) {
-                                console.error('Error with alternative field names:', altItemError);
-                                throw new Error(altItemError.message || 'Failed to create order item with alternative fields');
-                            }
-                            
-                            console.log('Order item created successfully with alternative field names');
-                            itemsCreated++;
-                        } catch (altError) {
-                            console.error('Alternative approach also failed:', altError);
-                        }
-                    } else {
-                        console.log('Order item created successfully');
-                        itemsCreated++;
-                    }
-                } catch (itemError) {
-                    console.error('Failed to create order item:', itemError);
+        for (const item of cart) {
+            try {
+                const itemTotal = item.quantity * item.price;
+                
+                // Create order item with all possible fields that triggers might expect
+                const orderItemData = {
+                    order_id: orderId,
+                    product_id: item.id,
+                    quantity: item.quantity,
+                    unit_price: item.price,
+                    // Add fields that triggers might expect
+                    total: itemTotal,  // For the update_order_item_total trigger
+                    price: item.price,  // Alternative field name
+                    product_name: currentLanguage === 'ar' ? item.name : item.nameEn,
+                    created_at: new Date().toISOString()
+                };
+                
+                const { error: itemError } = await supabase
+                    .from('order_items')
+                    .insert([orderItemData]);
+                
+                if (itemError) {
+                    console.error('Error creating order item:', itemError);
+                    throw itemError;
                 }
+                
+                console.log('Order item created successfully');
+                itemsCreated++;
+            } catch (itemError) {
+                console.error('Failed to create order item:', itemError);
+                // Continue with other items even if this one fails
             }
-            
-            // If we couldn't create any items, but the order was created, 
-            // we'll still consider it a success and show the order confirmation
-            if (itemsCreated === 0) {
-                console.warn('No order items were created, but order was created successfully');
-                // We'll continue anyway since the main order was created
-            }
-            
-            console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
-            
-        } catch (schemaError) {
-            console.error('Error checking order_items schema:', schemaError);
-            // If we can't check the schema, we'll just continue with the order creation
-            console.warn('Continuing without creating order items due to schema issues');
         }
+        
+        console.log(`Successfully created ${itemsCreated} out of ${cart.length} order items`);
         
         // Clear cart
         cart = [];
