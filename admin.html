@@ -1885,9 +1885,10 @@
                 
                 if (customersError) throw customersError;
                 
+                // استخدام العمود الصحيح order_items.unit_price بدلاً من price
                 const { data: revenueData, error: revenueError } = await supabase
                     .from('order_items')
-                    .select('price, quantity');
+                    .select('unit_price, quantity');
                 
                 if (revenueError) throw revenueError;
                 
@@ -1896,7 +1897,7 @@
                     productsCount: productsData.length,
                     ordersCount: ordersData.length,
                     customersCount: customersData.length,
-                    revenue: revenueData.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+                    revenue: revenueData.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0)
                 };
                 
                 // Render stats
@@ -1905,14 +1906,30 @@
                 // Load recent orders
                 const { data: recentOrders, error: recentOrdersError } = await supabase
                     .from('orders')
-                    .select(`
-                        *,
-                        profiles:customer_id (full_name, email)
-                    `)
+                    .select('*')
                     .order('created_at', { ascending: false })
                     .limit(5);
                 
                 if (recentOrdersError) throw recentOrdersError;
+                
+                // جلب بيانات العملاء للطلبات الحديثة
+                const recentCustomerIds = [...new Set(recentOrders.map(order => order.user_id))];
+                const { data: recentCustomersData, error: recentCustomersError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', recentCustomerIds);
+                
+                if (recentCustomersError) throw recentCustomersError;
+                
+                // دمج بيانات العملاء مع الطلبات الحديثة
+                const recentCustomersMap = {};
+                recentCustomersData.forEach(customer => {
+                    recentCustomersMap[customer.id] = customer;
+                });
+                
+                recentOrders.forEach(order => {
+                    order.profiles = recentCustomersMap[order.user_id] || { full_name: 'Unknown', email: 'N/A' };
+                });
                 
                 // Render recent orders
                 renderRecentOrders(recentOrders);
@@ -2105,15 +2122,32 @@
             try {
                 const { data, error } = await supabase
                     .from('orders')
-                    .select(`
-                        *,
-                        profiles:customer_id (full_name, email)
-                    `)
+                    .select('*')
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
                 
                 orders = data || [];
+                
+                // جلب بيانات العملاء بشكل منفصل
+                const customerIds = [...new Set(orders.map(order => order.user_id))];
+                const { data: customersData, error: customersError } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .in('id', customerIds);
+                
+                if (customersError) throw customersError;
+                
+                // دمج بيانات العملاء مع الطلبات
+                const customersMap = {};
+                customersData.forEach(customer => {
+                    customersMap[customer.id] = customer;
+                });
+                
+                orders.forEach(order => {
+                    order.profiles = customersMap[order.user_id] || { full_name: 'Unknown', email: 'N/A' };
+                });
+                
                 renderOrders();
             } catch (error) {
                 console.error('Error loading orders:', error.message);
@@ -2191,6 +2225,27 @@
                 if (error) throw error;
                 
                 customers = data || [];
+                
+                // جلب عدد الطلبات لكل عميل
+                const customerIds = customers.map(customer => customer.id);
+                const { data: ordersCount, error: ordersCountError } = await supabase
+                    .from('orders')
+                    .select('user_id, count', { count: 'exact' })
+                    .in('user_id', customerIds);
+                
+                if (ordersCountError) throw ordersCountError;
+                
+                // إنشاء خريطة لعدد الطلبات لكل عميل
+                const ordersCountMap = {};
+                ordersCount.forEach(order => {
+                    ordersCountMap[order.user_id] = order.count;
+                });
+                
+                // إضافة عدد الطلبات لبيانات العملاء
+                customers.forEach(customer => {
+                    customer.orders_count = ordersCountMap[customer.id] || 0;
+                });
+                
                 renderCustomers();
             } catch (error) {
                 console.error('Error loading customers:', error.message);
@@ -2700,6 +2755,22 @@
         // Load reports
         async function loadReports() {
             try {
+                // تدمير الرسوم البيانية الموجودة مسبقاً
+                const salesChart = Chart.getChart('sales-chart');
+                if (salesChart) {
+                    salesChart.destroy();
+                }
+                
+                const ordersChart = Chart.getChart('orders-chart');
+                if (ordersChart) {
+                    ordersChart.destroy();
+                }
+                
+                const productsChart = Chart.getChart('products-chart');
+                if (productsChart) {
+                    productsChart.destroy();
+                }
+                
                 // Load sales data
                 const { data: salesData, error: salesError } = await supabase
                     .from('orders')
@@ -2788,13 +2859,14 @@
                     });
                 }
                 
-                // Load top selling products
+                // Load top selling products - استخدام العمود الصحيح
                 const { data: topProductsData, error: topProductsError } = await supabase
                     .from('order_items')
                     .select(`
                         product_id,
                         products:product_id (name_ar, name_en),
-                        quantity
+                        quantity,
+                        unit_price
                     `)
                     .order('quantity', { ascending: false })
                     .limit(5);
@@ -2981,6 +3053,26 @@
 
         // Update all text content based on language
         function updateLanguage() {
+            // تحديث اتجين النص
+            document.body.setAttribute('dir', currentLanguage === 'ar' ? 'rtl' : 'ltr');
+            
+            // تحديث اتجين القوائم والجداول
+            if (currentLanguage === 'ar') {
+                document.querySelectorAll('.admin-table').forEach(table => {
+                    table.setAttribute('dir', 'rtl');
+                });
+                document.querySelectorAll('.sidebar-menu').forEach(menu => {
+                    menu.setAttribute('dir', 'rtl');
+                });
+            } else {
+                document.querySelectorAll('.admin-table').forEach(table => {
+                    table.setAttribute('dir', 'ltr');
+                });
+                document.querySelectorAll('.sidebar-menu').forEach(menu => {
+                    menu.setAttribute('dir', 'ltr');
+                });
+            }
+
             // Update sidebar
             document.querySelectorAll('.sidebar-menu a').forEach(link => {
                 const page = link.getAttribute('data-page');
