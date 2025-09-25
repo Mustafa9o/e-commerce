@@ -3478,6 +3478,8 @@
 
     // Handle checkout form submission - NO TRIGGERS VERSION
 // Handle checkout form submission - NEW TABLE VERSION
+// Handle checkout form submission - SIMPLER VERSION
+// Handle checkout form submission - BACKUP TABLE VERSION
 async function handleCheckout(e) {
     e.preventDefault();
     
@@ -3546,7 +3548,7 @@ async function handleCheckout(e) {
         // Get the order ID
         const orderId = orderDataResult[0].id;
         
-        // Try to create order items using the simple table
+        // Try to create order items using the backup table
         try {
             // Prepare items for the function
             const itemsForFunction = cart.map(item => ({
@@ -3556,20 +3558,20 @@ async function handleCheckout(e) {
                 unit_price: item.price
             }));
             
-            // Use the function to insert order items into the simple table
-            const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_simple', {
+            // Use the function to insert order items into the backup table
+            const { data: itemsData, error: itemsError } = await supabase.rpc('insert_order_items_backup', {
                 p_order_id: orderId,
                 p_items: itemsForFunction
             });
             
             if (itemsError) {
-                console.error('Error creating order items with simple table:', itemsError);
+                console.error('Error creating order items with backup table:', itemsError);
                 throw itemsError;
             }
             
-            console.log('Order items created successfully with simple table:', itemsData);
+            console.log('Order items created successfully with backup table:', itemsData);
         } catch (itemsError) {
-            console.error('Failed to create order items with simple table:', itemsError);
+            console.error('Failed to create order items with backup table:', itemsError);
             
             // Fallback: Store order items in local storage for later processing
             const pendingOrderItems = {
@@ -3628,8 +3630,8 @@ async function handleCheckout(e) {
                 errorMessage = 'حدث خطأ في قاعدة البيانات: اسم العمود غامض. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
             } else if (error.message.includes('duplicate key')) {
                 errorMessage = 'حدث خطأ: رقم طلب مكرر. يرجى المحاولة مرة أخرى.';
-            } else if (error.message.includes('function') && error.message.includes('does not exist')) {
-                errorMessage = 'حدث خطأ: وظيفة قاعدة البيانات غير متاحة. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
+            } else if (error.message.includes('permission denied')) {
+                errorMessage = 'حدث خطأ في صلاحيات قاعدة البيانات. تم إنشاء الطلب الرئيسي بنجاح وسيتم التواصل معك لتفاصيل الطلب.';
             } else {
                 errorMessage = `حدث خطأ: ${error.message}`;
             }
@@ -3647,7 +3649,7 @@ async function handleCheckout(e) {
         showNotification(errorMessage, 'error');
     }
 }
-// Function to create the database function if it doesn't exist
+        // Function to create the database function if it doesn't exist
 async function createOrderItemsFunction() {
     try {
         // Create the function to insert order items without triggers
