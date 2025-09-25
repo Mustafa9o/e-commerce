@@ -2849,6 +2849,7 @@
         // View order - FIXED VERSION
         // View order - UPDATED VERSION
 // View order - SIMPLIFIED FOR order_items_backup TABLE
+// View order - DEBUG VERSION
 async function viewOrder(orderId) {
     try {
         console.log("Loading order details for ID:", orderId);
@@ -2884,30 +2885,81 @@ async function viewOrder(orderId) {
         
         console.log("Customer data:", customer);
         
-        // Get order items from order_items_backup table
+        // First, let's check if the order_items_backup table exists and has any data
+        try {
+            const { data: tableCheck, error: tableError } = await supabase
+                .from('order_items_backup')
+                .select('*', { count: 'exact', head: true });
+            
+            if (tableError) {
+                console.error("Error checking order_items_backup table:", tableError);
+                console.log("Table might not exist or there's a permission issue");
+            } else {
+                console.log("order_items_backup table exists and has", tableCheck, "rows total");
+            }
+        } catch (error) {
+            console.error("Exception when checking order_items_backup table:", error);
+        }
+        
+        // Now let's check specifically for items for this order
         let orderItems = [];
         try {
-            const { data: items, error: itemsError } = await supabase
+            // First try a simple query without joins
+            const { data: simpleItems, error: simpleError } = await supabase
                 .from('order_items_backup')
                 .select('*')
                 .eq('order_id', orderId);
             
-            if (itemsError) {
-                console.error("Error fetching order items:", itemsError);
-                throw itemsError;
+            if (simpleError) {
+                console.error("Error with simple query:", simpleError);
+            } else {
+                console.log("Simple query result:", simpleItems);
+                orderItems = simpleItems || [];
             }
             
-            orderItems = items || [];
-            console.log("Order items data:", orderItems);
+            // If we got items, try to get product information
+            if (orderItems.length > 0) {
+                console.log("Found", orderItems.length, "items, trying to get product info");
+                
+                // Get unique product IDs
+                const productIds = [...new Set(orderItems.map(item => item.product_id).filter(id => id !== null))];
+                
+                if (productIds.length > 0) {
+                    // Fetch product information
+                    const { data: products, error: productsError } = await supabase
+                        .from('products')
+                        .select('id, name_ar, name_en, image_url')
+                        .in('id', productIds);
+                    
+                    if (productsError) {
+                        console.error("Error fetching products:", productsError);
+                    } else {
+                        console.log("Products data:", products);
+                        
+                        // Create a map of products by ID
+                        const productMap = {};
+                        products.forEach(product => {
+                            productMap[product.id] = product;
+                        });
+                        
+                        // Add product information to order items
+                        orderItems.forEach(item => {
+                            if (item.product_id && productMap[item.product_id]) {
+                                item.products = productMap[item.product_id];
+                            }
+                        });
+                    }
+                }
+            }
         } catch (error) {
-            console.error("Error fetching order items:", error.message);
-            orderItems = [];
+            console.error("Exception when fetching order items:", error);
         }
         
         // If no items found in order_items_backup, check local storage
         if (orderItems.length === 0) {
             console.log("No order items found in order_items_backup, checking local storage");
             
+            // Check for pending order items in local storage
             const pendingOrderItemsKey = `pending_order_items_${orderId}`;
             const pendingOrderItemsJson = localStorage.getItem(pendingOrderItemsKey);
             
@@ -2916,6 +2968,8 @@ async function viewOrder(orderId) {
                     const pendingOrderItems = JSON.parse(pendingOrderItemsJson);
                     
                     if (pendingOrderItems.items && pendingOrderItems.items.length > 0) {
+                        console.log("Found pending order items in local storage:", pendingOrderItems);
+                        
                         // Convert pending items to the same format as order items
                         orderItems = pendingOrderItems.items.map(item => ({
                             id: `pending_${item.product_id}`,
@@ -2925,11 +2979,42 @@ async function viewOrder(orderId) {
                             quantity: item.quantity,
                             unit_price: item.unit_price
                         }));
-                        
-                        console.log("Found order items in local storage:", orderItems);
                     }
                 } catch (e) {
                     console.error("Error parsing pending order items:", e);
+                }
+            }
+            
+            // Also check for the old format of pending order items
+            const pendingOrderItemsKey2 = `pending_order_items`;
+            const pendingOrderItemsJson2 = localStorage.getItem(pendingOrderItemsKey2);
+            
+            if (pendingOrderItemsJson2 && orderItems.length === 0) {
+                try {
+                    const pendingOrderItems2 = JSON.parse(pendingOrderItemsJson2);
+                    
+                    if (Array.isArray(pendingOrderItems2)) {
+                        // Filter items for this order
+                        const orderPendingItems = pendingOrderItems2.filter(item => 
+                            item.order_id === orderId || item.order_id === parseInt(orderId)
+                        );
+                        
+                        if (orderPendingItems.length > 0) {
+                            console.log("Found pending order items in old format:", orderPendingItems);
+                            
+                            // Convert to the same format
+                            orderItems = orderPendingItems.map(item => ({
+                                id: `pending_${item.product_id}`,
+                                order_id: orderId,
+                                product_id: item.product_id,
+                                product_name: item.product_name,
+                                quantity: item.quantity,
+                                unit_price: item.unit_price
+                            }));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error parsing pending order items (old format):", e);
                 }
             }
         }
@@ -2948,6 +3033,8 @@ async function viewOrder(orderId) {
                 unit_price: order.total || 0
             }];
         }
+        
+        console.log("Final order items:", orderItems);
         
         // Update modal title
         const orderDetailsTitle = document.getElementById('order-details-title');
@@ -3019,19 +3106,36 @@ async function viewOrder(orderId) {
             
             if (orderItems && orderItems.length > 0) {
                 orderItems.forEach(item => {
-                    // Get product name from the product_name field
-                    const productName = item.product_name || 
-                        (currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product');
+                    // Get product name from multiple possible sources
+                    let productName = '';
+                    if (item.product_name) {
+                        productName = item.product_name;
+                    } else if (item.products) {
+                        productName = currentLanguage === 'ar' 
+                            ? (item.products.name_ar || 'منتج غير معروف')
+                            : (item.products.name_en || 'Unknown Product');
+                    } else {
+                        productName = currentLanguage === 'ar' ? 'منتج غير معروف' : 'Unknown Product';
+                    }
                     
                     const itemPrice = item.unit_price || 0;
                     const itemQuantity = item.quantity || 1;
                     const itemTotal = itemPrice * itemQuantity;
                     total += itemTotal;
                     
+                    // Get product image from multiple possible sources
+                    let productImage = '';
+                    if (item.products && item.products.image_url) {
+                        productImage = item.products.image_url;
+                    }
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>
                             <div style="display: flex; align-items: center;">
+                                ${productImage 
+                                    ? `<img src="${productImage}" alt="${productName}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; margin-inline-end: 10px;" onerror="this.src='https://via.placeholder.com/40x40?text=No+Image'">` 
+                                    : ''}
                                 <span>${productName}</span>
                             </div>
                         </td>
